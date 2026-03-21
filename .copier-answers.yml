@@ -1,6 +1,6 @@
 # Changes here will be overwritten by Copier.
 _src_path: "../_py_template"
-_commit: "v1.7.4"
+_commit: "v1.7.4-3-g8ae837d"
 project_name: "video-duperz"
 project_kind: "qt_app"
 package_name: "video_duperz"
@@ -16,3 +16,4 @@ runtime_dependencies:
   - "opencv-python>=4.13.0.92"
 
   - "PySide6>=6.10.2"
+
