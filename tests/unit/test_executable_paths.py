@@ -31,14 +31,14 @@ def test_common_executable_candidate_paths_include_everything_local_appdata(
 ) -> None:
     monkeypatch.setenv("ProgramFiles", r"C:\Program Files")
     monkeypatch.setenv("ProgramFiles(x86)", r"C:\Program Files (x86)")
-    monkeypatch.setenv("LOCALAPPDATA", r"C:\Users\Test\AppData\Local")
+    monkeypatch.setenv("LOCALAPPDATA", r"C:\LocalAppData")
 
     candidates = common_executable_candidate_paths("everything")
 
     assert r"C:\Program Files\Everything\Everything.exe" in candidates
     assert r"C:\Program Files (x86)\Everything\Everything.exe" in candidates
     assert (
-        r"C:\Users\Test\AppData\Local\Programs\Everything\Everything.exe"
+        r"C:\LocalAppData\Programs\Everything\Everything.exe"
         in candidates
     )
 
