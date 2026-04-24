@@ -137,18 +137,29 @@ def load_nuitka_config(repo_root: Path) -> NuitkaConfig:
     )
 
 
+def resolve_dist_dir(repo_root: Path, config: NuitkaConfig) -> Path:
+    """Return the existing standalone output directory created by Nuitka."""
+
+    standalone_root = repo_root / "build" / "nuitka" / config.mode
+    expected_dist_dir = standalone_root / f"{config.output_name}.dist"
+    if expected_dist_dir.is_dir():
+        return expected_dist_dir
+
+    dist_dirs = sorted(path for path in standalone_root.glob("*.dist") if path.is_dir())
+    if len(dist_dirs) == 1:
+        return dist_dirs[0]
+
+    raise ValueError(
+        "Standalone build output not found. Run "
+        "'python scripts\\windows\\build_nuitka.py' first."
+    )
+
+
 def build_release_layout(repo_root: Path, release_tag: str) -> ReleaseLayout:
     """Return the concrete staging layout for one portable release package."""
 
     config = load_nuitka_config(repo_root)
-    dist_dir = (
-        repo_root / "build" / "nuitka" / config.mode / f"{config.output_name}.dist"
-    )
-    if not dist_dir.is_dir():
-        raise ValueError(
-            "Standalone build output not found. Run "
-            "'python scripts\\windows\\build_nuitka.py' first."
-        )
+    dist_dir = resolve_dist_dir(repo_root, config)
 
     folder_name = f"{config.output_name}-windows-x64-{release_tag}"
     staging_dir = repo_root / "build" / "release" / folder_name
