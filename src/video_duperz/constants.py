@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from threep_commons.app_identity import AppIdentity
 
-SETTINGS_ORG_NAME = "ThreepSoftwz"
+SETTINGS_ORG_NAME = "itlezy"
 SETTINGS_APP_NAME = "video_duperz"
-APP_DISPLAY_NAME = "video-duperz"
-APP_VERSION = "0.1.0"
+APP_DISPLAY_NAME = "Video Duperz"
+APP_VERSION = "0.1.1"
 DEFAULT_LOG_FILENAME = "video_duperz.log"
 DEFAULT_LOG_MAX_BYTES = 1_048_576
 DEFAULT_LOG_BACKUP_COUNT = 3

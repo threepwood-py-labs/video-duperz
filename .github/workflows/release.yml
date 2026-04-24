@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag to build, such as r-0.1.1
+        required: true
+        default: r-0.1.1
+      release_name:
+        description: Display name for the optional GitHub Release
+        required: true
+        default: Video Duperz r-0.1.1
+      publish_release:
+        description: Create a draft GitHub Release
+        required: true
+        default: false
+        type: boolean
+      release_notes:
+        description: Optional user-facing release notes body
+        required: false
+        default: |
+          Highlights:
+          - First portable Windows release for Video Duperz
+          - End-user-first README and setup guidance
+          - Improved first-run handling when scan tools are missing
+
+jobs:
+  build-portable:
+    name: Build Portable Release
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      - name: Prepare project environment
+        run: python scripts/windows/setup_env.py
+
+      - name: Build standalone executable
+        run: python scripts/windows/build_nuitka.py
+
+      - name: Package portable release zip
+        run: >
+          python scripts/windows/package_release.py
+          --release-tag "${{ inputs.release_tag }}"
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: video-duperz-${{ inputs.release_tag }}-windows-x64
+          path: build/release/*.zip
+
+      - name: Publish draft GitHub Release
+        if: ${{ inputs.publish_release }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          name: ${{ inputs.release_name }}
+          body: ${{ inputs.release_notes }}
+          draft: true
+          files: build/release/*.zip

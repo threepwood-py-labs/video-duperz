@@ -174,9 +174,14 @@ class MainWindowDriveViewMixin(MainWindowRootsMixin):
         QMessageBox.about(
             self,
             "About Video Duperz",
-            f"Video Duperz {__version__}\n"
-            "Windows-first duplicate video finder.\n"
-            f"Settings: {settings_path()}",
+            "\n".join(
+                [
+                    f"Video Duperz {__version__}",
+                    "Portable duplicate video finder for Windows 10/11 x64.",
+                    "Project: https://github.com/itlezy/video-duperz",
+                    f"Settings: {settings_path()}",
+                ]
+            ),
         )
 
     def _request_full_reset(self) -> None:

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "video-duperz"
-version = "0.1.0"
+version = "0.1.1"
 description = "Windows-first PySide app for perceptual duplicate video detection."
 readme = "README.md"
 license = { text = "MIT" }
@@ -18,7 +18,7 @@ classifiers = [
 ]
 dependencies = [
 
-  "threep-commons @ git+https://github.com/Threepwood-7/threep-commons@v0.3.1",
+  "threep-commons @ git+https://github.com/itlezy/threep-commons@v0.3.1",
 
 
   "numpy>=2.4.2",
@@ -34,9 +34,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Threepwood-7/video-duperz"
-Repository = "https://github.com/Threepwood-7/video-duperz"
-Issues = "https://github.com/Threepwood-7/video-duperz/issues"
+Homepage = "https://github.com/itlezy/video-duperz"
+Repository = "https://github.com/itlezy/video-duperz"
+Issues = "https://github.com/itlezy/video-duperz/issues"
 
 [tool.hatch.env]
 installer = "uv"
@@ -110,6 +110,7 @@ dependencies = [
 
 [tool.hatch.envs.package.scripts]
 standalone = "python scripts/windows/build_nuitka.py {args}"
+package-release = "python scripts/windows/package_release.py {args}"
 
 [tool.ruff]
 target-version = "py313"
