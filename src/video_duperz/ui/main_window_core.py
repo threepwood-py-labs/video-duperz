@@ -53,6 +53,7 @@ if TYPE_CHECKING:
     from ..db import Database
     from ..models import SavedScanProfilePayload, Settings
     from ..process_priority import CurrentProcessPriorityState
+    from ..scan_readiness import ScanReadiness
     from .workers import ScanWorker
 
 THUMBNAIL_SIZE_OPTIONS: tuple[tuple[str, str], ...] = (
@@ -208,6 +209,8 @@ class MainWindowBase(QMainWindow):
         self._scan_priority_state: CurrentProcessPriorityState | None = None
         self._sources_drive_table_column_widths: list[int] = []
         self._applying_sources_drive_table_column_widths = False
+        self._scan_readiness_warning_shown = False
+        self._scan_readiness: ScanReadiness | None = None
 
         self.tabs = QTabWidget(self)
         self.setCentralWidget(self.tabs)
@@ -253,6 +256,8 @@ class MainWindowBase(QMainWindow):
 
         self.statusBar().showMessage("Ready")
         self._load_settings_to_widgets()
+        self._connect_scan_readiness_signals()
+        self._refresh_scan_readiness()
 
     def _on_tab_changed(self, index: int) -> None: ...
 
@@ -279,6 +284,14 @@ class MainWindowBase(QMainWindow):
     ) -> None: ...
 
     def _load_settings_to_widgets(self) -> None: ...
+
+    def _connect_scan_readiness_signals(self) -> None: ...
+
+    def _refresh_scan_readiness(self) -> ScanReadiness: ...
+
+    def _warn_if_scan_not_ready(self, *, title: str) -> bool: ...
+
+    def show_startup_scan_readiness_warning_if_needed(self) -> None: ...
 
 
 class MainWindowMenuMixin(MainWindowBase):
@@ -1238,9 +1251,7 @@ class MainWindowSourceSetupMixin(MainWindowMenuMixin):
         self._set_sources_tooltip(self.ffprobe_exe_path_browse_btn, browse_tooltip)
         self._set_sources_tooltip(self.fpcalc_exe_path_browse_btn, browse_tooltip)
         self._set_sources_tooltip(self.mediainfo_exe_path_browse_btn, browse_tooltip)
-        self._set_sources_tooltip(
-            self.everything_exe_path_browse_btn, browse_tooltip
-        )
+        self._set_sources_tooltip(self.everything_exe_path_browse_btn, browse_tooltip)
         self._set_sources_tooltip(self.ffmpeg_exe_path_find_btn, find_tooltip)
         self._set_sources_tooltip(self.ffprobe_exe_path_find_btn, find_tooltip)
         self._set_sources_tooltip(self.fpcalc_exe_path_find_btn, find_tooltip)
@@ -1809,6 +1820,25 @@ class MainWindowSourceSetupMixin(MainWindowMenuMixin):
             buddy=self.everything_exe_path_edit,
         )
         tools_layout.addWidget(tools_table)
+        self.scan_readiness_label = QLabel(
+            "Scan readiness: checking...",
+            self.sources_tab,
+        )
+        self._configure_named_widget(
+            self.scan_readiness_label,
+            object_name="sources_scan_readiness_label",
+            widget_alias="Scan Readiness Label",
+        )
+        self.scan_readiness_label.setWordWrap(True)
+        self._set_sources_tooltip(
+            self.scan_readiness_label,
+            (
+                "Summarizes whether the current scan settings can run right now.\n\n"
+                "When required scan tools are missing, use the Tool Paths controls "
+                "above or install the FFmpeg suite before starting a scan."
+            ),
+        )
+        tools_layout.addWidget(self.scan_readiness_label)
         tools_layout.addStretch(1)
 
         options_container = QWidget(self.sources_tab)

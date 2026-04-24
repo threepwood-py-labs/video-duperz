@@ -200,6 +200,9 @@ class ScanView(QWidget):
         self._lane_rows: dict[int, int] = {}
         self._worker_limit = 0
         self._paused_loaded = False
+        self._mode = "idle"
+        self._scan_ready = True
+        self._scan_ready_reason = ""
 
         self.start_btn = QPushButton("&Start Scan", self)
         self.rescan_btn = QPushButton("&Rescan", self)
@@ -213,6 +216,10 @@ class ScanView(QWidget):
         self.retry_failed_checkbox.setEnabled(False)
         self.retry_failed_checkbox.setVisible(False)
         self.cancel_btn = QPushButton("&Cancel Scan", self)
+        self.readiness_label = QLabel("", self)
+        self.readiness_label.setWordWrap(True)
+        self.readiness_label.setVisible(False)
+        self.readiness_label.setStyleSheet("color: #9f2d2d;")
         self._apply_mode("idle")
 
         self.start_btn.clicked.connect(self.start_requested.emit)
@@ -234,6 +241,7 @@ class ScanView(QWidget):
         layout.addWidget(self.stage_progress)
         layout.addWidget(self.eta_label)
         layout.addWidget(self.io_stats_label)
+        layout.addWidget(self.readiness_label)
         layout.addLayout(actions)
         self.parallel_lanes_label = QLabel("Parallel &Lanes", self)
         self.parallel_lanes_label.setBuddy(self.lane_table)
@@ -318,13 +326,34 @@ class ScanView(QWidget):
 
     def _apply_mode(self, mode: str) -> None:
         """Apply the scan-action button state for one high-level mode."""
+        self._mode = mode
         is_running = mode == "running"
         is_paused = mode == "paused"
-        self.start_btn.setEnabled(not is_running and not is_paused)
-        self.rescan_btn.setEnabled(not is_running and not is_paused)
+        can_start = self._scan_ready and not is_running and not is_paused
+        can_resume = self._scan_ready and is_paused
+        self.start_btn.setEnabled(can_start)
+        self.rescan_btn.setEnabled(can_start)
         self.pause_btn.setEnabled(is_running)
-        self.resume_btn.setEnabled(is_paused)
+        self.resume_btn.setEnabled(can_resume)
         self.cancel_btn.setEnabled(is_running)
+        tooltip = "" if self._scan_ready else self._scan_ready_reason
+        self.start_btn.setToolTip(tooltip)
+        self.rescan_btn.setToolTip(tooltip)
+        self.resume_btn.setToolTip(tooltip)
+
+    def set_scan_ready(self, ready: bool, reason: str = "") -> None:
+        """Update scan-action state when required tools are missing.
+
+        Args:
+            ready: Whether scan execution can start safely.
+            reason: User-facing guidance shown while scan actions are disabled.
+        """
+
+        self._scan_ready = bool(ready)
+        self._scan_ready_reason = str(reason or "").strip()
+        self.readiness_label.setVisible(not self._scan_ready)
+        self.readiness_label.setText(self._scan_ready_reason)
+        self._apply_mode(self._mode)
 
     def _format_counter(self, current: int, total: int) -> str:
         """Format one compact file-progress counter."""

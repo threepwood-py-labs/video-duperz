@@ -184,31 +184,16 @@ def _apply_runtime_overrides(args: argparse.Namespace) -> None:
 
 
 def _cmd_gui(_args: argparse.Namespace) -> int:
-    from PySide6.QtWidgets import QApplication, QMessageBox
+    from PySide6.QtWidgets import QApplication
 
     from .ui.main_window import MainWindow
 
     settings = load_settings()
-    ffprobe_exe_path = str(getattr(settings, "ffprobe_exe_path", "") or "")
-    ffmpeg_exe_path = str(getattr(settings, "ffmpeg_exe_path", "") or "")
-    try:
-        ensure_probe_backend_available(
-            settings.probe_backend,
-            ffprobe_exe_path=ffprobe_exe_path,
-        )
-        if ffmpeg_exe_path:
-            ensure_fingerprint_fallback_chain_available(ffmpeg_exe_path)
-        else:
-            ensure_fingerprint_fallback_chain_available()
-    except (ProbeError, FingerprintError) as exc:
-        app = QApplication(sys.argv)
-        QMessageBox.critical(None, "Scan Backend Unavailable", str(exc))
-        return 2
-
     app = QApplication(sys.argv)
     db = Database()
     window = MainWindow(db=db, settings=settings)
     window.show()
+    window.show_startup_scan_readiness_warning_if_needed()
     exit_code = app.exec()
     full_reset_requested = bool(
         getattr(window, "consume_full_reset_requested", lambda: False)()

@@ -9,7 +9,7 @@ import re
 import subprocess
 import sys
 import traceback
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Generator, Iterable
 from dataclasses import dataclass
 from fractions import Fraction
 from statistics import median
@@ -1078,7 +1078,7 @@ def run_fingerprint_child_from_stdio() -> int:
 @contextlib.contextmanager
 def fingerprint_child_stdio(
     raw_payload: str,
-) -> Iterator[tuple[io.StringIO, io.StringIO]]:
+) -> Generator[tuple[io.StringIO, io.StringIO]]:
     """Temporarily replace stdio streams while exercising the child entrypoint."""
     stdin_io = io.StringIO(raw_payload)
     stdout_io = io.StringIO()

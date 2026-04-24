@@ -39,6 +39,7 @@ from ..models import (
     utc_now_iso,
 )
 from ..process_priority import normalize_scan_cpu_priority, normalize_scan_io_mode
+from ..scan_readiness import ScanReadiness, evaluate_scan_readiness
 from ..scan_sets import (
     build_scan_set_key,
     normalize_cross_resolution_mode,
@@ -84,6 +85,65 @@ class MainWindowSettingsMixin(MainWindowSourceSetupMixin):
     def _current_sources_extensions(self) -> list[str]: ...
 
     def _clear_loaded_paused_scan(self) -> None: ...
+
+    def _connect_scan_readiness_signals(self) -> None:
+        """Connect live UI changes that affect scan readiness."""
+
+        self.probe_backend_combo.currentTextChanged.connect(
+            self._on_scan_readiness_input_changed
+        )
+        self.ffmpeg_exe_path_edit.textChanged.connect(
+            self._on_scan_readiness_input_changed
+        )
+        self.ffprobe_exe_path_edit.textChanged.connect(
+            self._on_scan_readiness_input_changed
+        )
+
+    def _on_scan_readiness_input_changed(self, _text: str) -> None:
+        """Refresh scan readiness when tool inputs or backend selection change."""
+
+        self._refresh_scan_readiness()
+
+    def _refresh_scan_readiness(self) -> ScanReadiness:
+        """Refresh the scan-readiness status shown in the UI."""
+
+        readiness = evaluate_scan_readiness(self._settings_from_widgets())
+        self._scan_readiness = readiness
+        self.scan_view.set_scan_ready(readiness.is_ready, readiness.guidance)
+        self.scan_readiness_label.setText(
+            readiness.summary if readiness.is_ready else readiness.details_text()
+        )
+        readiness_color = "#2f6b2f" if readiness.is_ready else "#9f2d2d"
+        self.scan_readiness_label.setStyleSheet(f"color: {readiness_color};")
+        self.scan_readiness_label.setToolTip(readiness.details_text())
+        if not readiness.is_ready:
+            self.statusBar().showMessage(readiness.summary)
+        return readiness
+
+    def _warn_if_scan_not_ready(self, *, title: str) -> bool:
+        """Warn when scanning is blocked by missing required tools.
+
+        Args:
+            title: Dialog title used for the blocking warning.
+
+        Returns:
+            ``True`` when scanning is blocked and the caller should return.
+        """
+
+        readiness = self._refresh_scan_readiness()
+        if readiness.is_ready:
+            return False
+        self.tabs.setCurrentWidget(self.sources_tab)
+        QMessageBox.warning(self, title, readiness.modal_text())
+        return True
+
+    def show_startup_scan_readiness_warning_if_needed(self) -> None:
+        """Show one startup warning when scan requirements are unavailable."""
+
+        if self._scan_readiness_warning_shown:
+            return
+        self._scan_readiness_warning_shown = True
+        self._warn_if_scan_not_ready(title="Scan Setup Required")
 
     def _browse_executable_path(
         self,
@@ -239,6 +299,7 @@ class MainWindowSettingsMixin(MainWindowSourceSetupMixin):
         self._update_root_buttons_state()
         self._sync_column_toggle_actions()
         self._refresh_sources_physical_drive_view()
+        self._refresh_scan_readiness()
 
     def _settings_from_widgets(self) -> Settings:
         """Build the persisted settings payload from the current widget state."""

@@ -46,6 +46,8 @@ class MainWindowScanActionMixin(MainWindowProfilesMixin):
     ) -> None:
         """Create and launch one background scan worker from the current UI state."""
         self._persist_settings()
+        if self._warn_if_scan_not_ready(title="Scan Tools Missing"):
+            return
         if not self.settings.scan_roots:
             QMessageBox.warning(
                 self,
