@@ -1,663 +1,197 @@
 # Video Duperz
 
-A Windows-first PySide6 app for finding perceptual duplicate videos using dhash fingerprinting, with physical drive-aware parallel scanning and quality-based keep decisions.
+Video Duperz is a Windows desktop app for finding perceptual duplicate videos, reviewing them side by side, and deciding which copy to keep.
 
-## Table of Contents
+It is aimed at technical users with large local libraries who want a fast duplicate pass, visible scan telemetry, and detailed results before deleting anything.
 
-- [Features](#features)
-- [UI Walkthrough](#ui-walkthrough)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Configuration](#configuration)
-- [Keyboard Shortcuts](#keyboard-shortcuts)
-- [Menus](#menus)
-- [Project Structure](#project-structure)
-- [Architecture](#architecture)
-- [Duplicate Detection Flow](#duplicate-detection-flow)
-- [Backend Behavior and Result Quality](#backend-behavior-and-result-quality)
-- [Development](#development)
-- [Troubleshooting](#troubleshooting)
-- [Legal Disclaimer](#legal-disclaimer)
+## Screenshots
 
-## Features
+![Configure sources](docs/images/ui-01-overview.png)
 
-- **Perceptual duplicate detection** - dhash (difference hash) algorithm with 12 frame samples across video duration
-- **Three similarity profiles** - Conservative (0.12), Balanced (0.18, default), Aggressive (0.24) thresholds
-- **Physical drive-aware scanning** - maps root folders to physical drives and allocates worker threads per drive for optimal I/O
-- **Smarter first-run defaults** - uses `same aspect` cross-resolution matching, background-friendly scan priorities, and a worker budget capped by both CPU cores and detected physical drives
-- **Intelligent pre-filtering** - candidates filtered by duration (+-3s and 0.96 ratio minimum), aspect ratio, and hash prefilter before full distance computation
-- **Quality-based keep decisions** - scores files by resolution (65%), bitrate (25%), and codec quality (10%) to determine which duplicate to keep
-- **Exact match detection** - byte-level identical file detection using configurable block sampling
-- **Live scan monitoring** - real-time progress per lane showing discovered/analyzed files, lane ETA, I/O throughput, cache hit ratios, and active file
-- **Thumbnail pair caching** - extracts and caches video thumbnails at configurable frame positions
-- **Duplicate group management** - decision-focused UI for bulk actions (keep best, worst, larger, smaller, newer, older)
-- **Structured results filtering** - combine case-insensitive text filters with metadata filters for size, duration, similarity, resolution, codec, and HDR
-- **Scan-time process priority controls** - configure parent-process CPU/background I/O mode and scan-child priority policy for probe and fingerprint subprocesses
-- **Visible tool-path overrides** - browse or auto-find `ffmpeg`, `ffprobe`, `fpcalc`, `MediaInfo`, and `Everything` from the Sources tab, with first-run auto-discovery on Windows
-- **Export to CSV/JSON** - duplicate groups plus tracked symlink/hardlink rows exportable for external analysis
-- **Saved scan profiles** - save and restore source configurations and scan parameters
-- **Saved column views** - preserve result table column layouts and visibility
+Configure scan roots, matching behavior, performance limits, and tool paths.
 
-## UI Walkthrough
+![Monitor scan progress](docs/images/ui-02-workflow.png)
 
-The screenshots below are generated from mocked demo data so they stay deterministic and never expose local machine paths or personal folders.
+Watch live progress, per-lane activity, throughput, ETA, and scan issues.
 
-1. Configure scan roots, content rules, performance limits, and tool paths before indexing.
+![Review duplicate groups](docs/images/ui-03-details.png)
 
-   ![Configure sources](docs/images/ui-01-overview.png)
+Review grouped duplicates, filter aggressively, and apply keep/delete actions.
 
-   Sources tab with the three-column settings layout for scan content, scan performance, and executable path discovery.
+## First Public Windows Release
 
-2. Monitor scan progress, per-lane ETA, and scan issues while work is active.
+- Primary download: portable GitHub Release zip
+- Supported platform: Windows 10/11 x64
+- Portable package contents:
+  - `video-duperz/` app folder
+  - `README.md`
+  - `LICENSE`
+- The release does **not** bundle the FFmpeg suite
+- The app now opens even when required scan tools are missing, then explains what needs to be configured before scanning
 
-   ![Monitor scan progress](docs/images/ui-02-workflow.png)
+Releases: <https://github.com/itlezy/video-duperz/releases>
 
-   Scan tab showing lane status, ETA, throughput, queue depth, and detailed progress logs.
+## What It Does
 
-3. Review duplicate groups, filter aggressively, and choose a cleanup decision.
-
-   ![Review duplicate groups](docs/images/ui-03-details.png)
-
-   Results tab with grouped filters, comparison metadata, and keep/remove/export actions.
+- Finds likely duplicate videos using perceptual hashing instead of filename matching
+- Compares cross-resolution copies with configurable similarity profiles
+- Uses physical-drive-aware scheduling so scans stay more efficient on multi-disk libraries
+- Picks a default keep candidate using video quality signals such as resolution and bitrate
+- Exports duplicate groups and tracked filesystem links to CSV and JSON
+- Keeps optional integrations like Everything and MediaInfo available without making them required
 
 ## Requirements
 
-- **Windows** (10 or later)
-- **Python 3.13+**
-- **ffprobe** (from ffmpeg suite) installed and available in PATH
+### Required for scanning
 
-Runtime dependencies: `PySide6 >=6.10.2`, `numpy >=2.4.2`, `opencv-python >=4.13.0.92`.
+- Windows 10 or Windows 11
+- A local extracted copy of the release zip
+- The FFmpeg suite installed or manually configured
+  - `ffmpeg.exe`
+  - `ffprobe.exe`
 
-## Installation
+### Included in the app package
 
-### First-time Setup
+- The Qt desktop app itself
+- Python runtime packaged into the standalone build
+- Built-in first-run tool-path discovery for common Windows installs
 
-```bat
-python scripts\windows\setup_env.py
-```
+### Optional extras
 
-Creates the `.venv` by running `uv sync --locked` (falls back to `uv sync` if no lockfile).
+- `MediaInfo.exe` for richer file inspection from the Results view
+- `Everything.exe` for instant filename lookup from the Results view
+- `fpcalc.exe` if you want audio fingerprint matching features
 
-Manual alternative for development:
+## Install and First Run
 
-```bat
-uv sync --group dev
-```
+### 1. Download and extract
 
-Install ffmpeg if needed (Windows):
+Download the latest release zip from GitHub Releases and extract it to a normal writable folder, for example `C:\Tools\VideoDuperz`.
 
-```bat
-:: via package managers:
-choco install ffmpeg
-scoop install ffmpeg
+Do not run it directly from inside the zip file.
+
+### 2. Install the FFmpeg suite
+
+Video Duperz does not ship FFmpeg in the first release. Install the FFmpeg suite so the app can resolve `ffmpeg.exe` and `ffprobe.exe`.
+
+Windows package-manager examples:
+
+```powershell
 winget install Gyan.FFmpeg
 ```
 
-## Usage
-
-### Recommended (console-less)
-
-```bat
-pyw scripts\windows\run_app_gui.pyw
+```powershell
+choco install ffmpeg
 ```
 
-Launches the GUI without a console window. Auto-bootstraps the `.venv` via `setup_env.py` if not yet created.
-
-### With console
-
-```bat
-python scripts\windows\run_app.py
+```powershell
+scoop install ffmpeg
 ```
 
-Runs via `hatch run python -m video_duperz`. Requires `hatch` in PATH.
+### 3. Start the app
 
-### Direct (GUI)
-
-```bat
-python -m video_duperz gui
-```
-
-### CLI
-
-```bat
-:: Headless scan with profiles
-python -m video_duperz scan --roots D:\Videos E:\Archive --profile balanced
-
-:: Export results
-python -m video_duperz export --scan-id 1 --out C:\temp\dup-report
-
-:: Full reset (delete database, cache, and settings)
-python -m video_duperz clean --full-reset
-
-:: Full reset with relaunch
-python -m video_duperz clean --full-reset --delay-ms 1500 --relaunch
-```
-
-`File > Full reset` in the GUI closes the app, runs the companion cleaner command, and relaunches after cleanup.
-
-Global runtime overrides are available for all commands:
-
-- `--config-dir <path>` - override QSettings INI root
-- `--data-dir <path>` - override runtime data root (DB/cache/thumbnails)
-
-### Results Filtering
-
-The Results tab exposes a grouped filter panel above the duplicate table with an always-visible `Basic Filters` section and a collapsible `Advanced Filters` section.
-
-- `Basic Filters`:
-  - `Include Name`, `Include Path`, `Exclude Name`, `Exclude Path`
-  - `Must match all`
-  - `Clear Filters`
-  - case-insensitive matching
-  - use `|` inside one text box for OR matching, for example `sample|trailer`
-  - typing waits 5 seconds before applying
-  - pressing `Enter` in a text box applies immediately
-- `Advanced Filters`:
-  - collapsed by default each time the Results view opens
-  - `Size MiB Min/Max`
-  - `Duration s Min/Max`
-  - `Similarity Min`
-  - `Width Min`
-  - `Height Min`
-  - `Extension`
-  - `Video Codec`
-  - `HDR` with `Any`, `HDR only`, and `SDR only`
-
-`Clear Filters` resets every basic and advanced filter at once. All filter controls share the same debounce delay when changed normally. All active filter families combine with AND semantics. Inside a single text box, `|` terms combine with OR semantics.
-
-## Configuration
-
-Runtime settings are stored via QSettings:
-
-- Backend: `QSettings(IniFormat, UserScope, "ThreepSoftwz", "video_duperz")`
-- Default INI path: `%APPDATA%\ThreepSoftwz\video_duperz.ini`
-- Default runtime data root: `%LOCALAPPDATA%\ThreepSoftwz\video_duperz\`
-- Database: `%LOCALAPPDATA%\ThreepSoftwz\video_duperz\app.db` (SQLite with WAL mode)
-- OV01 overrides:
-  - `CONFIG_DIR` env var or `--config-dir`
-  - `DATA_DIR` env var or `--data-dir`
-
-### Key Settings
-
-| Setting | Description |
-|---|---|
-| Scan roots | Directories to scan for video files |
-| File extensions | Preset groups: basic, medium, broad |
-| Similarity profile | balanced / conservative / aggressive |
-| Fingerprint decode timeout | Base per-attempt timeout for guarded frame decoding, configurable from 0.1 to 3600.0 seconds |
-| Cross-resolution matching | `off`, `same_aspect` (default), or `any_aspect` |
-| Max workers | Range `1-16`, with the first-run default set to `min(cpu cores, detected physical drives)` and optional per-drive overrides |
-| Probe worker mode | balanced / burst |
-| Scan process priority | Parent and child CPU priority plus Normal / Background I/O mode during scans; first-run default is `Below Normal` CPU and `Background` I/O for both |
-| Thumbnail size | 80x45, 96x54, 128x72, 160x90 |
-| Frame extraction positions | Two percentage points for thumbnail comparison |
-| Identical file matching | Block size (1-64 MiB) and sample positions |
-| Keep rule strategy | Quality scoring (resolution + bitrate + codec) |
-| Batch size / flush intervals | Scan pipeline tuning parameters |
-| Tool path overrides | Optional Sources-tab overrides for `ffmpeg`, `ffprobe`, `fpcalc`, `MediaInfo`, and `Everything`, each with `Browse...` and `Find` helpers |
-| Custom Results commands | INI-only `custom_command_F2/F3/F4` entries that receive the current file path and parent dir |
-
-### Export Outputs
-
-One scan export now writes four files:
-
-- `duplicates.csv`
-- `duplicates.json`
-- `links.csv`
-- `links.json`
-
-`links.csv` and `links.json` contain tracked filesystem links that were excluded from duplicate matching. Each link row includes the link kind, the link path, the target original path, whether that target existed at scan time, and the source root.
-
-### Scan Priority Settings
-
-The Sources tab exposes four persisted scan-time priority controls:
-
-- `scan_parent_cpu_priority`
-- `scan_parent_io_mode`
-- `scan_child_cpu_priority`
-- `scan_child_io_mode`
-
-Supported CPU choices are `Idle`, `Below Normal`, `Normal`, `Above Normal`, and `High`.
-Supported I/O choices are `Normal` and `Background`.
-
-First-run defaults use `Below Normal` CPU priority and `Background` I/O mode for both parent and child scan work so the app behaves more politely on busy desktops.
-
-The parent settings apply only while a scan is active and are restored when the scan finishes, pauses, fails, or is cancelled. The same parent-scan policy is also applied by the headless `video-duperz scan` command.
-
-The child settings apply only to scan-heavy subprocesses:
-
-- `ffprobe` metadata extraction
-- `ffmpeg` frame extraction used during fingerprinting
-- `video-duperz fingerprint-child`
-
-Explorer, MediaInfo, Everything, custom commands, and cleaner relaunches are intentionally unaffected.
-
-### Recent Folders
-
-Up to 20 recently scanned folders are stored for quick access. Saved scan profiles are limited to 200.
-
-## Keyboard Shortcuts
-
-| Key | Action |
-|---|---|
-| Delete | Soft delete selected files by renaming to `.z_dele` |
-| Shift+Delete | Delete selected files to the Recycle Bin |
-| Ctrl+Shift+Delete | Permanently delete selected files |
-| Space | Toggle the current row checkbox |
-| Tab | Jump to the next visible duplicate group |
-| Shift+Tab | Jump to the previous visible duplicate group |
-| Enter | Open current file in default player |
-| E | Open file location in Explorer |
-| C | Copy the current full path |
-| S | Search the current filename in Everything |
-| G | Open a web search for the current filename stem |
-| M | Launch MediaInfo for selected file |
-| F2 / F3 / F4 | Run the configured INI custom command with `file_full_path` and `file_parent_dir_path` |
-| Ctrl+Q / Alt+X | Exit application |
-| F1 | About / Help |
-
-## Menus
-
-**File**:
-- Export Current Scan...
-- Clear Recent Folders
-- Clear Saved Scans
-- Clear Cached Thumbnails
-- Full Reset (destructive - launches separate cleaner process)
-- Exit (Ctrl+Q, Alt+X)
-
-**View**:
-- Columns submenu:
-  - Fit Columns
-  - Save Current View
-  - Saved Views (dynamic)
-  - Per-column visibility toggles (20 columns)
-
-**Sort** (mutually exclusive):
-- Larger / Smaller size groups first
-- Most / Least duplicates first
-- Larger / Smaller files in group first
-- Size difference (spread) DESC / ASC
-
-**Actions**:
-- Open Current File
-- Explore Current File
-- Copy Full Path
-- Search In Everything
-- Open Web Search
-- Launch MediaInfo
-- Run Custom Command F2 / F3 / F4
-- Select All, Keep Best / Worst / Larger / Smaller / Newer / Older
-- Soft Delete Selected
-- Delete to Recycle Bin
-- Permanently Delete
-
-### INI-Only Custom Results Actions
-
-The following custom command settings are available only in the INI file:
-
-- `custom_command_F2`
-- `custom_command_F3`
-- `custom_command_F4`
-
-When `custom_command_F2/F3/F4` are triggered from the Results tab, the app appends these two arguments to the configured command line:
-
-- `file_full_path`
-- `file_parent_dir_path`
-
-**Tools**:
-- Edit INI File
-
-**Help**:
-- About Video Duperz (F1)
-
-## Project Structure
+Launch:
 
 ```text
-video-duperz/
-|-- pyproject.toml
-|-- uv.lock
-|-- src/
-|   `-- video_duperz/
-|       |-- __init__.py              # Package version detection
-|       |-- __main__.py              # CLI entry point (gui, scan, export, clean)
-|       |-- config.py                # Settings management, QSettings wrappers
-|       |-- models.py                # Data classes (Settings, ScanResult, etc.)
-|       |-- db.py                    # SQLite database layer
-|       |-- scanner.py               # File enumeration and physical drive detection
-|       |-- pipeline.py              # Scan orchestration (enumerate/probe/fingerprint/match)
-|       |-- probe.py                 # Probe backends for video metadata
-|       |-- fingerprint.py           # dhash computation and decoder fallbacks
-|       |-- matcher.py               # Duplicate edge detection and grouping
-|       |-- quality.py               # Quality scoring for keep decisions
-|       |-- exact_match.py           # Byte-level identical file detection
-|       |-- scan_sets.py             # Scan configuration normalization
-|       |-- exporters.py             # Duplicate/link CSV/JSON export
-|       |-- cleaner.py               # Full reset utility
-|       `-- ui/
-|           |-- main_window.py       # Main application window with menus and tabs
-|           |-- scan_view.py         # Scan progress monitoring UI
-|           |-- results_view.py      # Duplicate results table with actions
-|           |-- thumbnails.py        # Thumbnail extraction and caching
-|           `-- workers.py           # QRunnable workers for async operations
-|-- scripts/
-|   |-- policy/
-|   |   `-- check_standard.py
-|   `-- windows/
-|       |-- setup_env.py              # Create/verify .venv via uv sync
-|       |-- run_app.py               # Launch app via hatch run
-|       |-- run_app_gui.pyw          # Launch GUI without console window
-|       |-- refresh_readme_screenshots.py # Generate mocked README gallery screenshots
-|       `-- run_tests.py             # Run tests via hatch run test
-|-- docs/
-|   |-- dev-packaging.md
-|   `-- images/
-|       |-- ui-01-overview.png
-|       |-- ui-02-workflow.png
-|       `-- ui-03-details.png
-|-- tests/
-|   |-- conftest.py
-|   |-- unit/
-|   `-- integration/
-`-- .pre-commit-config.yaml
+video-duperz\video-duperz.exe
 ```
 
-## Architecture
+If the app cannot find the required scan tools, it opens and shows a setup warning instead of exiting immediately.
 
-- `src/` layout with `video_duperz` package.
-- CLI entry point (`__main__.py`) dispatches to `gui`, `scan`, `export`, or `clean` commands.
-- **Scan pipeline** (`pipeline.py` + `pipeline_runtime.py`) orchestrates:
-  1. **Enumerate** - discover video files, assign them to physical-drive lanes, and sort work per lane by path
-  2. **Prepare / cache lookup** - upsert file rows, load cached probe/fingerprint artifacts, and skip unchanged files when possible
-  3. **Analyze** - for uncached files, run probe plus fingerprint or fingerprint-only reuse work
-  4. **Match** - bucket files by metadata, compare perceptual hashes, and accept duplicate edges under the selected profile
-  5. **Results** - build duplicate groups and choose a default keep candidate by quality score
-- **Scan process priority** (`process_priority.py`) applies optional parent-process CPU/background mode during active scans and child-process priority policy for scan-only subprocess launches.
-- **Physical drive mapping** (`scanner.py`) uses Windows kernel32 APIs to map volumes to physical drives and allocate I/O workers per drive.
-- **Database** (`db.py`) uses SQLite with WAL mode, aggressive PRAGMAs (mmap, cache_size, synchronous=NORMAL), and batch transaction flushing.
-- **GUI threading** uses `QThreadPool` with `QRunnable`-based workers (`ScanWorker`, `ThumbnailPairWorker`, `ExactMatchGroupWorker`) communicating via Qt signals.
-- **Quality scoring** (`quality.py`) combines resolution (65%), bitrate (25%), and codec quality (10%) weights.
+### 4. Fix tool paths if needed
 
-## Duplicate Detection Flow
+Open the **Sources** tab and use **Tool Paths** to:
 
-The app does not compare raw files directly. It builds a normalized analysis record for each video, then compares only plausible candidates.
+- leave fields blank and use auto-discovery / PATH lookup
+- click **Find** to search common install locations
+- click **Browse...** to point directly at a specific executable
 
-### End-to-end flow
+Scan actions remain disabled until the required scan components are available.
 
-```mermaid
-flowchart TD
-    A[Scan roots] --> B[Enumerate video files]
-    B --> C[Assign each file to physical-drive lane]
-    C --> D[Sort work by path within each lane]
-    D --> E[Upsert file rows in SQLite]
-    E --> F{Cached artifacts valid?}
-    F -- yes: meta + fingerprint --> G[Cache hit<br/>skip analyze]
-    F -- partial: meta only --> H[Fingerprint only]
-    F -- no --> I[Probe + fingerprint]
-    H --> J[Persist fingerprint + decoder provenance]
-    I --> K[Persist probe metadata]
-    K --> J
-    G --> L[Load match inputs]
-    J --> L
-    L --> M[Bucket by duration + aspect ratio]
-    M --> N[Candidate gate<br/>duration/aspect checks]
-    N --> O[Fast prefilter on 3 hash positions]
-    O --> P[Full normalized median hash distance]
-    P --> Q{Distance <= profile threshold?}
-    Q -- yes --> R[Create duplicate edge]
-    Q -- no --> S[Discard pair]
-    R --> T[Union connected files into groups]
-    T --> U[Choose default keep file by quality]
-```
+## Quick Start
 
-### What each stage actually does
+1. Add one or more scan folders on the **Sources** tab.
+2. Leave the default similarity profile on **Balanced** for the first pass.
+3. Confirm the scan-readiness note says scanning is ready.
+4. Open the **Scan** tab and start the scan.
+5. Review duplicate groups on the **Results** tab.
+6. Use keep strategies, per-row selection, and delete actions carefully.
+7. Export the current scan if you want an external review before cleanup.
 
-| Stage | What it does | Persisted output |
-|---|---|---|
-| Enumerate | Walks source roots, filters by configured extensions, records file path, size, mtime, ctime, source root, and physical-drive lane. | `files` rows are upserted later during prepare. |
-| Prepare | Writes/updates `files`, checks existing cached artifacts by `path + size + mtime_ns + probe_backend`, and decides between cache hit, fingerprint-only, or full analyze. | Updated `files` rows and in-memory scheduling decisions. |
-| Probe | Extracts `VideoMeta`: duration, width, height, fps, codec, bitrate, audio flags/codecs/bitrates/languages, subtitle languages, and HDR flag. | `video_meta` row with `probed_at`, source file stats, and optional probe error. |
-| Fingerprint | Samples 12 timestamps across the duration, decodes frames, converts them to grayscale, downsizes to `9x8` comparisons via a `32x32` intermediate, and stores 12 dhash values. | `fingerprints` row plus `fingerprint_decoder_provenance`. |
-| Match | Loads persisted `MatchItem` records, buckets by coarse duration/aspect, filters candidates, then compares hash distance under the chosen profile threshold. | Duplicate edges and grouped duplicate sets. |
-| Group / keep choice | Turns accepted edges into connected components and picks a default keep candidate. | `duplicate_groups` and `duplicate_items` rows. |
+## Optional Extras
 
-### What "analyze" means
+These integrations are useful, but not required for the first release:
 
-In the runtime, **analyze** is the expensive per-file phase that produces the material needed for matching.
+- **MediaInfo**: launch richer media inspection for the current file
+- **Everything**: search the current filename instantly
+- **fpcalc**: enable audio fingerprint matching workflows
 
-- `cache_hit`: both probe metadata and fingerprint are already valid in the database, so no worker is launched.
-- `fingerprint_only`: probe metadata is already valid, so the worker reuses cached `VideoMeta` and only rebuilds the fingerprint.
-- `probe_and_fingerprint`: the worker probes the file first, then fingerprints it.
-
-This is why resumed scans can be much faster than fresh scans when files are unchanged: unchanged files are either skipped entirely or avoid re-probing.
-
-### Resume and cache reuse flow
-
-```mermaid
-flowchart TD
-    A[Resumed scan starts] --> B[Re-enumerate current files]
-    B --> C[Load cached artifacts by<br/>path + size + mtime_ns + probe_backend]
-    C --> D{Cached probe metadata?}
-    D -- no --> E[Queue full analyze<br/>probe + fingerprint]
-    D -- yes --> F{Cached fingerprint present<br/>and algo version matches?}
-    F -- yes --> G[Cache hit<br/>skip worker entirely]
-    F -- no --> H[Queue fingerprint-only work<br/>reuse cached VideoMeta]
-    E --> I[Persist new metadata + fingerprint]
-    H --> J[Persist new fingerprint only]
-    G --> K[Use persisted match input]
-    I --> K
-    J --> K
-```
-
-### What "probe" means
-
-Probe is the metadata extraction step. It does not compare duplicates by itself; it shapes the later candidate search.
-
-Probe data is used for:
-
-- bucket construction: duration bucket and aspect-ratio bucket
-- candidate rejection: duration difference, duration ratio, and aspect-ratio delta
-- UI / export columns: resolution, codec, bitrate, HDR, audio/subtitle metadata
-- default keep scoring: quality scoring uses some of the same media facts
-
-If probe fails for a file, the runtime records a probe error and that file does not participate in matching.
-
-### What "fingerprint" means
-
-Fingerprint is the perceptual signature used for actual duplicate similarity.
-
-- The app samples 12 timestamps across the video duration.
-- For each sample it decodes a frame to grayscale.
-- It computes a 64-bit dhash per sample.
-- The matcher first does a quick median check on 3 positions.
-- If that survives, it computes the normalized median Hamming distance across all 12 hashes.
-
-Two files are considered duplicates only if that final normalized distance is at or below the active profile threshold:
-
-| Profile | Threshold |
-|---|---|
-| conservative | `0.12` |
-| balanced | `0.18` |
-| aggressive | `0.24` |
-
-Lower thresholds are stricter.
-
-## Backend Behavior and Result Quality
-
-There are two separate backend choices in the current implementation:
-
-1. **Probe backend**: user-selectable per scan
-2. **Fingerprint decoder backend**: chosen automatically per file through fallback logic
-
-They affect different parts of the pipeline.
-
-### Probe backends
-
-| Probe backend | Used for | Notes |
-|---|---|---|
-| `pyav` | Metadata extraction only | Reads container/stream info through PyAV. |
-| `ffprobe` | Metadata extraction only | Shells out to `ffprobe` and parses JSON output. |
-
-The selected probe backend is persisted with the scan and is part of cache validity. Cached probe/fingerprint data for `pyav` does not satisfy an `ffprobe` scan, and vice versa.
-
-### Fingerprint decoder backends
-
-Fingerprinting always ends at the same hash representation, but the frame decoder used to obtain those frames can differ:
-
-| Decoder backend | Used for | Notes |
-|---|---|---|
-| `opencv` | Fingerprint frame decode | Preferred first for normal formats. |
-| `pyav` | Fingerprint frame decode fallback | Used when OpenCV is unavailable or unsuitable. |
-| `ffmpeg` | Fingerprint frame decode fallback or first choice for problematic formats | Uses the configured guarded timeout, with a longer multiplied timeout for problematic formats. |
-
-For problematic formats (`.wmv`, `.asf`, `.avi`, `.mov`, `.mpg`, `.mpeg`, `.flv`), fingerprinting now starts with `ffmpeg` instead of `opencv`, and each decoder attempt gets a `4x` multiplier on the configured base timeout. The default base timeout is `15.0 s`.
-
-### How backend choices affect comparison results
-
-#### Probe backend impact
-
-Changing the probe backend can change:
-
-- exact duration value
-- fps value
-- width/height interpretation in odd containers
-- bitrate and language metadata completeness
-- HDR detection fields
-
-Those differences matter because matching uses probe metadata to decide which pairs are even worth comparing. If two files end up in different duration/aspect neighborhoods, they may never reach the hash-comparison step.
-
-So:
-
-- the probe backend mainly affects **candidate generation and filtering**
-- it can change recall/false positives indirectly
-- it does **not** change the dhash algorithm itself
-
-#### Fingerprint decoder impact
-
-Changing the fingerprint decoder path can change:
-
-- which exact frame is decoded near a timestamp
-- how corrupted or awkward containers are tolerated
-- whether a frame sample is missing or substituted
-
-That means decoder choice can change the actual hash values, even though the final hash algorithm is still the same dhash implementation. In practice:
-
-- stable decodes across backends usually produce very similar results
-- awkward formats can produce meaningfully different hashes depending on decoder
-- this is why decoder provenance is stored, and why problematic formats prefer `ffmpeg` first
-
-### Important implementation details
-
-- A scan compares files only within the same scan and same selected probe backend.
-- Cache reuse requires matching `path`, `size`, `mtime_ns`, probe backend, and fingerprint algorithm version.
-- Resume never means "freeze worker threads and continue later." It means re-enumerate, reload persisted artifacts, skip unchanged fully processed files, and continue on the same `scan_id`.
-- Progress rows distinguish:
-  - `cache` -> reused probe + fingerprint
-  - `fingerprint` -> reused probe, rebuilt fingerprint
-  - `probe` -> rebuilt metadata + fingerprint
-
-### Why the app can report duplicates across different containers/codecs
-
-The final duplicate decision is perceptual, not container-based.
-
-- Probe metadata only narrows candidate pairs.
-- Fingerprints compare sampled visual content.
-- Grouping is based on accepted perceptual duplicate edges.
-
-That is why files such as `.mkv` and `.mp4`, or remuxed/re-encoded copies, can still be grouped together when their sampled visual content stays close enough.
-
-## Development
-
-### Windows Helpers
-
-| Script | Description |
-|---|---|
-| `python scripts\windows\setup_env.py` | Create/verify `.venv` via `uv sync --locked` |
-| `pyw scripts\windows\run_app_gui.pyw` | Launch GUI without console window (auto-bootstraps venv) |
-| `python scripts\windows\run_app.py` | Launch app via `hatch run` (requires hatch in PATH) |
-| `python scripts\windows\run_tests.py` | Run test suite via `hatch run test` |
-
-### Testing
-
-```bat
-hatch run test
-```
-
-### Benchmarking
-
-- Internal benchmark runs should use deterministic sample planners and lane-aware scheduling.
-- During tests and benchmarks, never process more than one active file at a time from the same physical drive.
-- This benchmark-only contention rule does not change production `burst` behavior.
-
-### Quality Checks
-
-```bat
-hatch run lint:all
-hatch run test-cov
-```
-
-Individual checks:
-
-```bat
-hatch run lint:check
-hatch run lint:fmt
-hatch run lint:types
-hatch run lint:policy
-```
-
-### Build
-
-```bat
-hatch build
-```
-
-For packaging and release notes, see `docs/dev-packaging.md`.
-
-### Lockfile Workflow
-
-```bat
-uv lock
-uv lock --check
-```
+If those tools are missing, Video Duperz still launches and scans normally. Only the related feature entry points stay unavailable.
 
 ## Troubleshooting
 
-### ffprobe not found
+### The app opens, but scan buttons are disabled
 
-The app checks for ffprobe at startup. If missing, an error dialog is shown and the app exits.
+The required scan tools are not ready yet.
 
-```bat
-ffprobe -version
+Check:
+
+- `ffmpeg.exe` is installed
+- `ffprobe.exe` is installed
+- the configured override paths are valid
+- the **Probe Backend** and tool-path settings match what is installed
+
+### I installed FFmpeg, but the app still cannot find it
+
+Use **Sources > Tool Paths**:
+
+- click **Find** first
+- if that still fails, click **Browse...** and select the exact executable path
+
+### The app should work without ffprobe because I use the PyAV backend
+
+The release documentation still recommends installing the full FFmpeg suite because it gives the smoothest Windows setup and keeps both `ffmpeg` and `ffprobe` available when you need them.
+
+### I want to reset everything
+
+Use **File > Full Reset** to clear the app database, cached thumbnails, and saved settings.
+
+## Known Limitations
+
+- First public release is Windows-only
+- First public release is portable-only; there is no installer yet
+- FFmpeg is not bundled in the first release
+- Large scans can still be I/O-heavy, especially on slower disks
+- Results should be reviewed before destructive delete actions
+
+## Technical Docs
+
+- [Technical Overview](docs/technical-overview.md)
+- [Packaging and Release Notes](docs/dev-packaging.md)
+
+## Development
+
+For local development:
+
+```powershell
+python scripts/windows/setup_env.py
 ```
 
-Install via Chocolatey, Scoop, or WinGet if needed.
-
-### OpenCV import errors
-
-OpenCV (`opencv-python`) is required for optimal frame extraction. If missing, a fallback numpy-based resize is used, but fingerprinting quality may be reduced.
-
-### Database errors
-
-SQLite WAL mode requires a filesystem that supports shared memory. PRAGMA errors on unsupported filesystems are caught and ignored. To reset the database, use `File > Full reset` or:
-
-```bat
-python -m video_duperz clean --full-reset
+```powershell
+hatch run test
 ```
 
-### Scan performance
+```powershell
+hatch run lint:check
+```
 
-- Each physical drive gets its own processing lane with independent workers.
-- Reduce `Max workers` if disk I/O becomes a bottleneck.
-- Use `Probe worker mode: burst` for SSDs, `balanced` for HDDs.
-- Use the Sources tab `Scan Process Priority` controls when you want scans to yield more aggressively to foreground work.
-- Max 64 drive workers per scan.
+```powershell
+hatch run package:standalone
+```
 
-### Settings migration
+## License
 
-Column width and visibility settings must match the current 20-column schema; stale payloads are ignored.
-
----
+MIT. See [LICENSE](LICENSE).
 
 <!-- legal-disclaimer:start -->
 ## Legal Disclaimer
