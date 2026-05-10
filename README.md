@@ -26,6 +26,12 @@ Releases: <https://github.com/threepwood-py-labs/video-duperz/releases>
 - Exports duplicate groups and tracked filesystem links to CSV and JSON
 - Keeps optional integrations like Everything and MediaInfo available without making them required
 
+## User Guide
+
+Start with the [user guide](docs/user-guide.md) for first-run setup, scan
+configuration, duplicate review workflows, delete/rename safety, and
+troubleshooting.
+
 ## Requirements
 
 ### Required for scanning
@@ -152,6 +158,8 @@ Use **File > Full Reset** to clear the app database, cached thumbnails, and save
 
 ## Technical Docs
 
+- [Documentation Index](docs/README.md)
+- [User Guide](docs/user-guide.md)
 - [Technical Overview](docs/technical-overview.md)
 - [Packaging and Release Notes](docs/dev-packaging.md)
 
