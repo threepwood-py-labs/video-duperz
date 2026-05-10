@@ -3,7 +3,7 @@
 ## Current Release Shape
 
 - Product: `video-duperz`
-- Public release line: `r-0.1.1`
+- Public release line: `v0.1.1`
 - Primary artifact: portable Windows zip
 - Supported target: Windows 10/11 x64
 - Portable zip contents:
@@ -31,13 +31,13 @@ python scripts/windows/build_nuitka.py
 Package the public release zip:
 
 ```powershell
-python scripts/windows/package_release.py --release-tag r-0.1.1
+python scripts/windows/package_release.py --release-tag v0.1.1
 ```
 
 Equivalent Hatch entry point:
 
 ```powershell
-hatch run package:package-release --release-tag r-0.1.1
+hatch run package:package-release --release-tag v0.1.1
 ```
 
 ## Output Layout
@@ -47,9 +47,9 @@ Expected build outputs:
 - standalone app folder:
   - `build/nuitka/standalone/video-duperz.dist`
 - staged portable release:
-  - `build/release/video-duperz-windows-x64-r-0.1.1`
+  - `build/release/video-duperz-windows-x64-v0.1.1`
 - release zip:
-  - `build/release/video-duperz-windows-x64-r-0.1.1.zip`
+  - `build/release/video-duperz-windows-x64-v0.1.1.zip`
 
 ## GitHub Release Workflow
 

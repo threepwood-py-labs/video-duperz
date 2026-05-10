@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Release tag to build, such as r-0.1.1
+        description: Release tag to build, such as v0.1.1
         required: true
-        default: r-0.1.1
+        default: v0.1.1
       release_name:
         description: Display name for the optional GitHub Release
         required: true
-        default: Video Duperz r-0.1.1
+        default: Video Duperz v0.1.1
       publish_release:
         description: Create a draft GitHub Release
         required: true

@@ -11,7 +11,9 @@ from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
 OFFLINE_DOC_NAMES: tuple[str, ...] = (
+    "README.md",
     "CHANGELOG.md",
+    "user-guide.md",
     "technical-overview.md",
     "dev-packaging.md",
 )
@@ -59,7 +61,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--release-tag",
         default="",
-        help="Release tag suffix used in the artifact name, such as r-0.1.1.",
+        help="Release tag suffix used in the artifact name, such as v0.1.1.",
     )
     return parser.parse_args(argv)
 
@@ -223,7 +225,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         args = parse_args(argv)
         version = load_project_version(repo_root)
-        release_tag = str(args.release_tag or "").strip() or f"r-{version}"
+        release_tag = str(args.release_tag or "").strip() or f"v{version}"
         layout = build_release_layout(repo_root, release_tag)
         stage_release(layout, repo_root)
         write_release_zip(layout)

@@ -57,7 +57,7 @@ include_data_files = []
 
     package_release = _load_package_release_module()
 
-    layout = package_release.build_release_layout(repo_root, "r-0.1.1")
+    layout = package_release.build_release_layout(repo_root, "v0.1.1")
 
     assert layout.dist_dir == dist_dir
-    assert layout.folder_name == "video-duperz-windows-x64-r-0.1.1"
+    assert layout.folder_name == "video-duperz-windows-x64-v0.1.1"
