@@ -29,7 +29,7 @@ Review grouped duplicates, filter aggressively, and apply keep/delete actions.
 - The release does **not** bundle the FFmpeg suite
 - The app now opens even when required scan tools are missing, then explains what needs to be configured before scanning
 
-Releases: <https://github.com/itlezy/video-duperz/releases>
+Releases: <https://github.com/threepwood-py-labs/video-duperz/releases>
 
 ## What It Does
 

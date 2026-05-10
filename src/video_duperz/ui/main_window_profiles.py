@@ -178,7 +178,7 @@ class MainWindowDriveViewMixin(MainWindowRootsMixin):
                 [
                     f"Video Duperz {__version__}",
                     "Portable duplicate video finder for Windows 10/11 x64.",
-                    "Project: https://github.com/itlezy/video-duperz",
+                    "Project: https://github.com/threepwood-py-labs/video-duperz",
                     f"Settings: {settings_path()}",
                 ]
             ),
