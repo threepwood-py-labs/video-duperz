@@ -1,5 +1,8 @@
 # High-ROI vNext Performance and Design Improvements
 
+Archived historical vNext design note. Current shipped behavior is documented in
+`../../README.md` and `../CHANGELOG.md`.
+
 ## Summary
 
 - Keep the main scan runtime thread-based, but stop spending optimization effort on "more threads" alone.

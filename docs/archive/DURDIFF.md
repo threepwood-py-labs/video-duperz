@@ -1,5 +1,9 @@
 # Duration-Difference Duplicate Detection — Implementation Plan
 
+Archived historical implementation note. Shipped duration-difference behavior is
+tracked in `../CHANGELOG.md`; current user-facing behavior is documented in
+`../../README.md`.
+
 Status: [DONE] High-priority implementation landed for phases 1-3. Phase 4 remains deferred.
 
 ## Problem Statement

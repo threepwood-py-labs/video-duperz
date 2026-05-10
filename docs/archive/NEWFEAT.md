@@ -1,5 +1,9 @@
 # New Features & Improvements — video-duperz
 
+Archived historical planning note. Delivered changes from this file are tracked
+in `../CHANGELOG.md`; current user-facing behavior is documented in
+`../../README.md`.
+
 Organized by area, priority ranked High / Medium / Low within each section.
 
 ---
