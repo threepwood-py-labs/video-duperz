@@ -37,10 +37,7 @@ def test_common_executable_candidate_paths_include_everything_local_appdata(
 
     assert r"C:\Program Files\Everything\Everything.exe" in candidates
     assert r"C:\Program Files (x86)\Everything\Everything.exe" in candidates
-    assert (
-        r"C:\LocalAppData\Programs\Everything\Everything.exe"
-        in candidates
-    )
+    assert r"C:\LocalAppData\Programs\Everything\Everything.exe" in candidates
 
 
 def test_discover_executable_override_path_preserves_valid_current_path(

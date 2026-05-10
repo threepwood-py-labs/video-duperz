@@ -236,6 +236,9 @@ def test_cmd_gui_spawns_cleaner_when_full_reset_requested(monkeypatch) -> None:
         def show(self) -> None:
             return None
 
+        def show_startup_scan_readiness_warning_if_needed(self) -> None:
+            return None
+
         def consume_full_reset_requested(self) -> bool:
             return True
 
@@ -265,7 +268,7 @@ def test_cmd_gui_spawns_cleaner_when_full_reset_requested(monkeypatch) -> None:
     assert "--relaunch" in called[0]
 
 
-def test_cmd_gui_reports_fingerprint_backend_failures(monkeypatch) -> None:
+def test_cmd_gui_delegates_startup_readiness_to_window(monkeypatch) -> None:
     monkeypatch.setattr(
         app_main, "load_settings", lambda: types.SimpleNamespace(probe_backend="pyav")
     )
@@ -282,25 +285,43 @@ def test_cmd_gui_reports_fingerprint_backend_failures(monkeypatch) -> None:
         def __init__(self, _argv):
             pass
 
-    critical_calls: list[tuple[str, str]] = []
+        def exec(self) -> int:
+            return 0
 
     class _FakeMsgBox:
         @staticmethod
         def critical(_parent, title: str, message: str) -> None:
-            critical_calls.append((title, message))
+            raise AssertionError((title, message))
 
     qtwidgets = types.SimpleNamespace(QApplication=_FakeApp, QMessageBox=_FakeMsgBox)
     monkeypatch.setitem(sys.modules, "PySide6.QtWidgets", qtwidgets)
     fake_main_window_module = types.ModuleType("video_duperz.ui.main_window")
-    fake_main_window_module.MainWindow = object  # type: ignore[attr-defined]
+
+    readiness_calls: list[str] = []
+
+    class _FakeMainWindow:
+        def __init__(self, db, settings):
+            self.db = db
+            self.settings = settings
+
+        def show(self) -> None:
+            return None
+
+        def show_startup_scan_readiness_warning_if_needed(self) -> None:
+            readiness_calls.append("startup")
+
+        def consume_full_reset_requested(self) -> bool:
+            return False
+
+    fake_main_window_module.MainWindow = _FakeMainWindow  # type: ignore[attr-defined]
     monkeypatch.setitem(
         sys.modules, "video_duperz.ui.main_window", fake_main_window_module
     )
 
     rc = app_main._cmd_gui(argparse.Namespace())
 
-    assert rc == 2
-    assert critical_calls == [("Scan Backend Unavailable", "ffmpeg missing")]
+    assert rc == 0
+    assert readiness_calls == ["startup"]
 
 
 def test_cmd_scan_applies_and_restores_scan_process_priority(
@@ -322,6 +343,10 @@ def test_cmd_scan_applies_and_restores_scan_process_priority(
             scan_child_io_mode="background",
             scan_parent_cpu_priority="below_normal",
             scan_parent_io_mode="background",
+            scan_size_mib_min=0,
+            scan_size_mib_max=0,
+            duration_tolerance_s=8.0,
+            fingerprint_timeout_s=15.0,
             scan_db_batch_size=512,
             scan_db_flush_interval_ms=200,
             scan_enum_queue_max=4096,

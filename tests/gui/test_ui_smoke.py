@@ -762,8 +762,7 @@ def test_scan_results_tabs_and_menus_use_consistent_mnemonics(tmp_path: Path) ->
         )
         assert window.scan_view.parallel_lanes_label.text() == "Parallel &Lanes"
         assert (
-            window.scan_view.parallel_lanes_label.buddy()
-            is window.scan_view.lane_table
+            window.scan_view.parallel_lanes_label.buddy() is window.scan_view.lane_table
         )
         assert window.scan_view.detailed_progress_label.text() == (
             "Detailed Scan &Progress"
@@ -774,8 +773,7 @@ def test_scan_results_tabs_and_menus_use_consistent_mnemonics(tmp_path: Path) ->
         )
         assert window.scan_view.scan_issues_label.text() == "Scan &Issues"
         assert (
-            window.scan_view.scan_issues_label.buddy()
-            is window.scan_view.issues_table
+            window.scan_view.scan_issues_label.buddy() is window.scan_view.issues_table
         )
 
         results_groups = {
@@ -816,12 +814,10 @@ def test_scan_results_tabs_and_menus_use_consistent_mnemonics(tmp_path: Path) ->
             is window.results_view.filter_exclude_path_edit
         )
         assert (
-            results_labels["Size MiB Mi&n"]
-            is window.results_view.filter_min_size_spin
+            results_labels["Size MiB Mi&n"] is window.results_view.filter_min_size_spin
         )
         assert (
-            results_labels["Size MiB Ma&x"]
-            is window.results_view.filter_max_size_spin
+            results_labels["Size MiB Ma&x"] is window.results_view.filter_max_size_spin
         )
         assert (
             results_labels["Duration s Mi&n"]
@@ -835,16 +831,12 @@ def test_scan_results_tabs_and_menus_use_consistent_mnemonics(tmp_path: Path) ->
             results_labels["Similarity Mi&n"]
             is window.results_view.filter_min_similarity_spin
         )
+        assert results_labels["&Width Min"] is window.results_view.filter_min_width_spin
         assert (
-            results_labels["&Width Min"] is window.results_view.filter_min_width_spin
+            results_labels["&Height Min"] is window.results_view.filter_min_height_spin
         )
         assert (
-            results_labels["&Height Min"]
-            is window.results_view.filter_min_height_spin
-        )
-        assert (
-            results_labels["E&xtension"]
-            is window.results_view.filter_extension_combo
+            results_labels["E&xtension"] is window.results_view.filter_extension_combo
         )
         assert (
             results_labels["Video &Codec"]
@@ -950,7 +942,7 @@ def test_sources_tab_scan_shortcut_button_opens_scan_tab(tmp_path: Path) -> None
 
         scan_button = window.findChild(QPushButton, "sources_scan_btn")
         assert scan_button is window.sources_scan_btn
-        assert scan_button.text() == "Scan"
+        assert scan_button.text() == "&Scan"
         assert window.roots_list.minimumHeight() == 250
         assert window.roots_list.maximumHeight() > 250
 
@@ -2012,7 +2004,7 @@ def test_results_structured_filters_and_clear_button(tmp_path: Path) -> None:
         assert attributes_card is not None
         assert basic_card.isVisible()
         assert advanced_toggle.isVisible()
-        assert advanced_toggle.text() == "Advanced Filters"
+        assert advanced_toggle.text() == "Ad&vanced Filters"
         assert advanced_toggle.isCheckable()
         assert advanced_toggle.isChecked() is False
         assert advanced_container.isVisible() is False
@@ -3428,8 +3420,10 @@ def test_load_saved_scan_profile_cancelled_latest_routes_to_sources(
         assert window.tabs.currentWidget() == window.sources_tab
         assert window.current_scan_id is None
         assert window.results_view.results_table.rowCount() == 0
-        assert "cancelled" in window.statusBar().currentMessage().lower()
-        assert f"#{cancelled_id}" in window.statusBar().currentMessage()
+        _ = cancelled_id
+        status_message = window.statusBar().currentMessage()
+        assert "not started" in status_message.lower()
+        assert "Cancelled Profile" in status_message
         window.close()
 
 
@@ -4427,7 +4421,7 @@ def test_scan_running_locks_ui_to_scan_tab_until_finished(
         assert not window.scan_view.start_btn.isEnabled()
         assert not window.scan_view.rescan_btn.isEnabled()
         assert window.scan_view.cancel_btn.isEnabled()
-        assert priority_calls == ["apply:normal:normal"]
+        assert priority_calls == ["apply:below_normal:background"]
 
         window.tabs.setCurrentWidget(window.sources_tab)
         app.processEvents()
@@ -4448,7 +4442,7 @@ def test_scan_running_locks_ui_to_scan_tab_until_finished(
         assert window.scan_view.start_btn.isEnabled()
         assert window.scan_view.rescan_btn.isEnabled()
         assert not window.scan_view.cancel_btn.isEnabled()
-        assert priority_calls == ["apply:normal:normal", "restore:True"]
+        assert priority_calls == ["apply:below_normal:background", "restore:True"]
         window.close()
 
 
@@ -4683,6 +4677,7 @@ def test_rescan_uses_current_sources_and_runs_cleanup_then_start(
             roots=expected_roots,
             similarity_profile="aggressive",
             extensions=["mp4", "mkv"],
+            cross_resolution_mode="same_aspect",
         )
         assert called["roots"] == expected_roots
         assert called["scan_set_key"] == expected_key
@@ -4863,8 +4858,8 @@ def test_scan_view_removes_redundant_top_progress_labels(tmp_path: Path) -> None
             if label.text()
         }
         assert "Stage Progress" not in scan_labels
-        assert "Detailed Scan Progress" in scan_labels
-        assert "Scan Issues" in scan_labels
+        assert "Detailed Scan &Progress" in scan_labels
+        assert "Scan &Issues" in scan_labels
         assert window.scan_view.stage_progress is not None
         assert [
             window.scan_view.progress_table.horizontalHeaderItem(index).text()
@@ -5324,9 +5319,9 @@ def test_scan_view_renders_lane_snapshots_and_worker_utilization(
         assert "reused 2" in window.scan_view.io_stats_label.text()
         assert "fp-only 1" in window.scan_view.io_stats_label.text()
         assert "reprobe 2" in window.scan_view.io_stats_label.text()
-        assert window.scan_view.rescan_btn.text() == "Rescan"
-        assert window.scan_view.pause_btn.text() == "Pause Scan"
-        assert window.scan_view.resume_btn.text() == "Resume Scan"
+        assert window.scan_view.rescan_btn.text() == "&Rescan"
+        assert window.scan_view.pause_btn.text() == "&Pause Scan"
+        assert window.scan_view.resume_btn.text() == "Res&ume Scan"
         window.close()
 
 

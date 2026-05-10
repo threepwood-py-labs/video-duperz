@@ -1,6 +1,6 @@
 # Changes here will be overwritten by Copier.
 _src_path: "../_py_template"
-_commit: "v1.7.4-7-g4bc5d2f"
+_commit: "v1.7.4-8-g9e8a3f8"
 project_name: "video-duperz"
 project_kind: "qt_app"
 package_name: "video_duperz"

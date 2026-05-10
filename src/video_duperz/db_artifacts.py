@@ -513,6 +513,16 @@ class DatabaseArtifactMixin:
         self._commit_if_needed()
         return copied
 
+    @staticmethod
+    def _requested_clone_paths_by_key(paths: set[str]) -> dict[str, list[str]]:
+        """Group requested clone paths by normalized database path key."""
+        requested_paths_by_key: dict[str, list[str]] = {}
+        for raw_path in sorted(str(path) for path in paths if str(path).strip()):
+            normalized_path = path_key(raw_path)
+            if normalized_path:
+                requested_paths_by_key.setdefault(normalized_path, []).append(raw_path)
+        return requested_paths_by_key
+
     def clone_scan_files_with_artifacts(
         self,
         *,
@@ -526,12 +536,7 @@ class DatabaseArtifactMixin:
         """Clone file rows and cached artifacts from one scan into another."""
         if not paths:
             return {}
-        requested_paths_by_key: dict[str, list[str]] = {}
-        for raw_path in sorted(str(path) for path in paths if str(path).strip()):
-            normalized_path = path_key(raw_path)
-            if not normalized_path:
-                continue
-            requested_paths_by_key.setdefault(normalized_path, []).append(raw_path)
+        requested_paths_by_key = self._requested_clone_paths_by_key(paths)
         if not requested_paths_by_key:
             return {}
         source_rows: list[sqlite3.Row] = []

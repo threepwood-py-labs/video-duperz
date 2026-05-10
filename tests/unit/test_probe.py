@@ -128,9 +128,7 @@ def test_ensure_ffprobe_available_uses_path_lookup_when_override_blank(
     ffprobe_path.write_text("", encoding="utf-8")
     monkeypatch.setattr(
         "video_duperz.executable_paths.commons_resolve_executable_path",
-        lambda tool_name: (
-            ffprobe_path if tool_name == "ffprobe" else None
-        ),
+        lambda tool_name: ffprobe_path if tool_name == "ffprobe" else None,
     )
 
     assert ensure_ffprobe_available("") == str(ffprobe_path)
