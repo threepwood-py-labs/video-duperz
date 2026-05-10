@@ -4,20 +4,6 @@ Video Duperz is a Windows desktop app for finding perceptual duplicate videos, r
 
 It is aimed at technical users with large local libraries who want a fast duplicate pass, visible scan telemetry, and detailed results before deleting anything.
 
-## Screenshots
-
-![Configure sources](docs/images/ui-01-overview.png)
-
-Configure scan roots, matching behavior, performance limits, and tool paths.
-
-![Monitor scan progress](docs/images/ui-02-workflow.png)
-
-Watch live progress, per-lane activity, throughput, ETA, and scan issues.
-
-![Review duplicate groups](docs/images/ui-03-details.png)
-
-Review grouped duplicates, filter aggressively, and apply keep/delete actions.
-
 ## First Public Windows Release
 
 - Primary download: portable GitHub Release zip
