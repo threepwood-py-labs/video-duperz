@@ -10,6 +10,7 @@
   - packaged standalone app folder
   - `README.md`
   - `LICENSE`
+  - `docs/` markdown files referenced by the README
 
 The first public release does not include an installer and does not bundle the FFmpeg suite.
 
@@ -85,6 +86,7 @@ Before publishing a release:
   - app folder
   - `README.md`
   - `LICENSE`
+  - README-linked docs under `docs/`
 
 ## Release Notes Style
 

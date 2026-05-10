@@ -10,6 +10,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
+OFFLINE_DOC_NAMES: tuple[str, ...] = (
+    "CHANGELOG.md",
+    "technical-overview.md",
+    "dev-packaging.md",
+)
+
 
 @dataclass(frozen=True)
 class ReleaseLayout:
@@ -186,6 +192,20 @@ def stage_release(layout: ReleaseLayout, repo_root: Path) -> None:
     shutil.copytree(layout.dist_dir, layout.app_dir)
     shutil.copy2(repo_root / "README.md", layout.staging_dir / "README.md")
     shutil.copy2(repo_root / "LICENSE", layout.staging_dir / "LICENSE")
+    stage_offline_docs(layout, repo_root)
+
+
+def stage_offline_docs(layout: ReleaseLayout, repo_root: Path) -> None:
+    """Copy README-linked markdown docs into the portable release."""
+
+    source_docs_dir = repo_root / "docs"
+    target_docs_dir = layout.staging_dir / "docs"
+    target_docs_dir.mkdir(parents=True, exist_ok=True)
+
+    for doc_name in OFFLINE_DOC_NAMES:
+        source_path = source_docs_dir / doc_name
+        if source_path.is_file():
+            shutil.copy2(source_path, target_docs_dir / doc_name)
 
 
 def write_release_zip(layout: ReleaseLayout) -> None:
