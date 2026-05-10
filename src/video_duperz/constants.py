@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from threep_commons.app_identity import AppIdentity
 
-SETTINGS_ORG_NAME = "itlezy"
+SETTINGS_ORG_NAME = "ThreepSoftwz"
 SETTINGS_APP_NAME = "video_duperz"
 APP_DISPLAY_NAME = "Video Duperz"
 APP_VERSION = "0.1.1"
