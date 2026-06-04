@@ -51,6 +51,7 @@ from video_duperz.models import (
     ScanProgress,
     VideoMeta,
 )
+from video_duperz.scan_readiness import ScanReadiness
 from video_duperz.scan_sets import build_scan_set_key, normalize_roots_for_display
 from video_duperz.scanner import PhysicalDriveInfo
 from video_duperz.ui.main_window import MainWindow
@@ -94,6 +95,26 @@ from video_duperz.ui.scan_view import (
     SCAN_PROGRESS_HEADERS,
 )
 from video_duperz.ui.thumbnails import thumbnail_cache_dir
+
+
+def _ready_scan_readiness() -> ScanReadiness:
+    """Return a deterministic ready scan status for scan-flow tests."""
+
+    return ScanReadiness(
+        is_ready=True,
+        summary="Scan readiness: ready.",
+        guidance="Required scan components are available.",
+        issues=(),
+    )
+
+
+def _force_scan_ready(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bypass host tool discovery for tests that exercise scan flow wiring."""
+
+    monkeypatch.setattr(
+        "video_duperz.ui.main_window_settings.evaluate_scan_readiness",
+        lambda _settings: _ready_scan_readiness(),
+    )
 
 
 def _dup_item(
@@ -3429,9 +3450,11 @@ def test_load_saved_scan_profile_cancelled_latest_routes_to_sources(
 
 def test_load_saved_scan_profile_paused_loads_scan_tab_and_issues(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     app = QApplication.instance() or QApplication([])
+    _force_scan_ready(monkeypatch)
     with Database(tmp_path / "app.db") as db:
         roots = [str(tmp_path / "library")]
         paused_id = db.create_scan(
@@ -3558,10 +3581,11 @@ def test_resume_scan_passes_retry_failed_checkbox_state(
 
 def test_resume_launch_preserves_unchecked_retry_failed_checkbox(
     tmp_path: Path,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     app = QApplication.instance() or QApplication([])
+    _force_scan_ready(monkeypatch)
     with Database(tmp_path / "app.db") as db:
         roots = [str(tmp_path / "library")]
         paused_id = db.create_scan(
