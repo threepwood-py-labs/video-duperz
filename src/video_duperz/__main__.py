@@ -142,6 +142,18 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     fingerprint_child.set_defaults(func=_cmd_fingerprint_child)
 
+    smoke_gui = sub.add_parser(
+        "smoke-gui",
+        help=argparse.SUPPRESS,
+    )
+    smoke_gui.add_argument(
+        "--duration-ms",
+        type=int,
+        default=500,
+        help=argparse.SUPPRESS,
+    )
+    smoke_gui.set_defaults(func=_cmd_smoke_gui)
+
     benchmark_eval = sub.add_parser(
         "benchmark-eval",
         help=argparse.SUPPRESS,
@@ -219,6 +231,43 @@ def _cmd_gui(_args: argparse.Namespace) -> int:
             return 3
         return 0
     return int(exit_code)
+
+
+def _cmd_smoke_gui(args: argparse.Namespace) -> int:
+    """Launch the main window briefly and fail if startup opens a modal dialog."""
+    from PySide6.QtCore import QTimer
+    from PySide6.QtWidgets import QApplication
+
+    from .ui.main_window import MainWindow
+
+    settings = load_settings()
+    app = QApplication([sys.argv[0]])
+    db = Database()
+    window = MainWindow(db=db, settings=settings)
+    try:
+        window.show()
+        app.processEvents()
+        if not window.isVisible():
+            print("ERROR: GUI smoke window did not become visible.", file=sys.stderr)
+            return 4
+        modal_widget = app.activeModalWidget()
+        if modal_widget is not None:
+            print("ERROR: GUI smoke launch opened a modal dialog.", file=sys.stderr)
+            return 5
+
+        duration_ms = max(0, int(args.duration_ms))
+        QTimer.singleShot(duration_ms, app.quit)
+        exit_code = int(app.exec())
+        app.processEvents()
+        modal_widget = app.activeModalWidget()
+        if modal_widget is not None:
+            print("ERROR: GUI smoke run left a modal dialog open.", file=sys.stderr)
+            return 5
+        return exit_code
+    finally:
+        window.close()
+        with contextlib.suppress(Exception):
+            db.close()
 
 
 def _cmd_scan(args: argparse.Namespace) -> int:

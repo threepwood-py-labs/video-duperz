@@ -37,7 +37,7 @@ jobs:
       draft_release: ${{ steps.resolve.outputs.draft_release }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
           fetch-depth: 0
@@ -62,7 +62,7 @@ jobs:
           "draft_release=$draftRelease" >> $env:GITHUB_OUTPUT
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version-file: .python-version
 
@@ -104,18 +104,18 @@ jobs:
             runner: windows-11-arm
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.release-metadata.outputs.release_tag }}
           fetch-depth: 0
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v8
         with:
           enable-cache: true
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version-file: .python-version
 
@@ -149,8 +149,27 @@ jobs:
           }
           & $exePath --help
 
+      - name: Smoke test GUI launch
+        shell: pwsh
+        run: |
+          $exePath = "build/release/video-duperz-${{ needs.release-metadata.outputs.release_tag }}-${{ matrix.target_arch }}.exe"
+          $profileRoot = Join-Path $env:RUNNER_TEMP "video-duperz-smoke-${{ matrix.target_arch }}"
+          $configDir = Join-Path $profileRoot "config"
+          $dataDir = Join-Path $profileRoot "data"
+          $tempDir = Join-Path $profileRoot "temp"
+          New-Item -ItemType Directory -Force -Path $configDir, $dataDir, $tempDir | Out-Null
+          $env:CONFIG_DIR = $configDir
+          $env:DATA_DIR = $dataDir
+          $env:TEMP = $tempDir
+          $env:TMP = $tempDir
+          $env:QT_QPA_PLATFORM = "offscreen"
+          & $exePath smoke-gui --duration-ms 500
+          if ($LASTEXITCODE -ne 0) {
+              throw "GUI smoke launch failed for $exePath with exit code $LASTEXITCODE"
+          }
+
       - name: Upload release assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: video-duperz-${{ needs.release-metadata.outputs.release_tag }}-${{ matrix.target_arch }}-release-assets
           path: |
@@ -171,17 +190,17 @@ jobs:
       artifact-metadata: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.release-metadata.outputs.release_tag }}
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version-file: .python-version
 
       - name: Download release assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: video-duperz-${{ needs.release-metadata.outputs.release_tag }}-*-release-assets
           path: build/release
@@ -189,6 +208,11 @@ jobs:
 
       - name: Write release checksums
         run: python scripts/windows/write_release_checksums.py
+
+      - name: Verify release asset set
+        run: >
+          python scripts/windows/verify_release_assets.py
+          --release-tag "${{ needs.release-metadata.outputs.release_tag }}"
 
       - name: Attest release assets
         uses: actions/attest@v4
@@ -199,7 +223,7 @@ jobs:
             ${{ github.workspace }}/build/release/SHA256SUMS.txt
 
       - name: Upload combined release assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: video-duperz-${{ needs.release-metadata.outputs.release_tag }}-release-assets
           path: |
@@ -208,7 +232,7 @@ jobs:
             build/release/SHA256SUMS.txt
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.release-metadata.outputs.release_tag }}
           name: ${{ needs.release-metadata.outputs.release_name }}
@@ -218,3 +242,84 @@ jobs:
             build/release/*.zip
             build/release/*.exe
             build/release/SHA256SUMS.txt
+
+  verify-published-release:
+    name: Verify Published ${{ matrix.target_arch }} Release
+    needs:
+      - release-metadata
+      - publish-release
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      attestations: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target_arch: windows-x64
+            runner: windows-latest
+          - target_arch: windows-arm64
+            runner: windows-11-arm
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.release-metadata.outputs.release_tag }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+
+      - name: Download published release assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $releaseDir = Join-Path $env:GITHUB_WORKSPACE "build\published-release"
+          New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
+          gh release download "${{ needs.release-metadata.outputs.release_tag }}" `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --dir "$releaseDir" `
+            --clobber
+
+      - name: Verify published release checksums
+        run: >
+          python scripts/windows/verify_release_assets.py
+          --release-dir build/published-release
+          --release-tag "${{ needs.release-metadata.outputs.release_tag }}"
+
+      - name: Verify published release attestations
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $releaseDir = Join-Path $env:GITHUB_WORKSPACE "build\published-release"
+          $assets = Get-ChildItem -LiteralPath $releaseDir -File |
+            Where-Object { $_.Name -like "*.exe" -or $_.Name -like "*.zip" -or $_.Name -eq "SHA256SUMS.txt" }
+          foreach ($asset in $assets) {
+              gh attestation verify "$($asset.FullName)" --repo "$env:GITHUB_REPOSITORY"
+          }
+
+      - name: Smoke test published GUI launch
+        shell: pwsh
+        run: |
+          $exePath = "build/published-release/video-duperz-${{ needs.release-metadata.outputs.release_tag }}-${{ matrix.target_arch }}.exe"
+          if (-not (Test-Path -LiteralPath $exePath)) {
+              throw "Published onefile executable missing: $exePath"
+          }
+          $profileRoot = Join-Path $env:RUNNER_TEMP "video-duperz-published-smoke-${{ matrix.target_arch }}"
+          $configDir = Join-Path $profileRoot "config"
+          $dataDir = Join-Path $profileRoot "data"
+          $tempDir = Join-Path $profileRoot "temp"
+          New-Item -ItemType Directory -Force -Path $configDir, $dataDir, $tempDir | Out-Null
+          $env:CONFIG_DIR = $configDir
+          $env:DATA_DIR = $dataDir
+          $env:TEMP = $tempDir
+          $env:TMP = $tempDir
+          $env:QT_QPA_PLATFORM = "offscreen"
+          & $exePath smoke-gui --duration-ms 500
+          if ($LASTEXITCODE -ne 0) {
+              throw "Published GUI smoke launch failed for $exePath with exit code $LASTEXITCODE"
+          }

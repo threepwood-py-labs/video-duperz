@@ -62,6 +62,7 @@ hatch run package:package-release --release-tag v0.1.4 --target-arch windows-x64
 hatch run package:onefile
 hatch run package:package-onefile --release-tag v0.1.4 --target-arch windows-x64
 hatch run package:checksums
+hatch run package:verify-assets --release-tag v0.1.4
 ```
 
 ## Output Layout
@@ -99,11 +100,18 @@ The repo includes an automated Windows release workflow:
   - builds standalone executables and portable zips
   - builds onefile executables
   - smoke-tests the public onefile executable with `--help`
+  - smoke-launches the packaged GUI with an isolated offscreen profile
   - uploads per-architecture release assets as workflow artifacts
   - writes one combined `SHA256SUMS.txt`
+  - verifies the complete asset set and checksum file before publishing
   - attests all public release assets and checksums
   - uploads combined release assets as a workflow artifact
   - creates or updates one GitHub Release with both architectures
+  - downloads the published GitHub Release assets on x64 and ARM64 runners
+  - verifies the published checksums and attestations
+  - smoke-launches the published executable for each architecture
+
+Dependabot is enabled for GitHub Actions and `uv.lock` dependency updates.
 
 Recommended first-release flow:
 

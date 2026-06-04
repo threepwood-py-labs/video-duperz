@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 if TYPE_CHECKING:
     from types import ModuleType
 
@@ -176,3 +178,54 @@ def test_write_release_checksums_includes_exe_and_zip(tmp_path: Path) -> None:
     checksum_text = checksum_path.read_text(encoding="utf-8")
     assert "video-duperz-v0.1.1-windows-x64.exe" in checksum_text
     assert "video-duperz-windows-x64-v0.1.1.zip" in checksum_text
+
+
+def test_verify_release_assets_accepts_complete_multi_arch_set(tmp_path: Path) -> None:
+    """Verify every public asset has a matching checksum entry."""
+
+    release_dir = tmp_path / "build" / "release"
+    release_dir.mkdir(parents=True)
+    asset_names = [
+        "video-duperz-v0.1.1-windows-x64.exe",
+        "video-duperz-v0.1.1-windows-arm64.exe",
+        "video-duperz-windows-x64-v0.1.1.zip",
+        "video-duperz-windows-arm64-v0.1.1.zip",
+    ]
+    for asset_name in asset_names:
+        (release_dir / asset_name).write_bytes(asset_name.encode("utf-8"))
+    checksums = _load_windows_script(
+        "video_duperz_write_release_checksums_verify",
+        "write_release_checksums.py",
+    )
+    checksums.write_checksums(release_dir)
+    verifier = _load_windows_script(
+        "video_duperz_verify_release_assets",
+        "verify_release_assets.py",
+    )
+
+    verifier.verify_release_assets(release_dir, "v0.1.1")
+
+
+def test_verify_release_assets_rejects_missing_checksum(tmp_path: Path) -> None:
+    """Fail release verification when an asset lacks a checksum."""
+
+    release_dir = tmp_path / "build" / "release"
+    release_dir.mkdir(parents=True)
+    for asset_name in [
+        "video-duperz-v0.1.1-windows-x64.exe",
+        "video-duperz-v0.1.1-windows-arm64.exe",
+        "video-duperz-windows-x64-v0.1.1.zip",
+        "video-duperz-windows-arm64-v0.1.1.zip",
+    ]:
+        (release_dir / asset_name).write_bytes(b"asset")
+    (release_dir / "SHA256SUMS.txt").write_text(
+        "0" * 64 + "  video-duperz-v0.1.1-windows-x64.exe\n",
+        encoding="utf-8",
+    )
+    verifier = _load_windows_script(
+        "video_duperz_verify_release_assets_missing_checksum",
+        "verify_release_assets.py",
+    )
+
+    with pytest.raises(ValueError, match="Missing checksums"):
+        verifier.verify_release_assets(release_dir, "v0.1.1")

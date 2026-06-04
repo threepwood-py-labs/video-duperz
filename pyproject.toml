@@ -116,6 +116,7 @@ onefile = "python scripts/windows/build_onefile.py {args}"
 package-release = "python scripts/windows/package_release.py {args}"
 package-onefile = "python scripts/windows/package_onefile.py {args}"
 checksums = "python scripts/windows/write_release_checksums.py {args}"
+verify-assets = "python scripts/windows/verify_release_assets.py {args}"
 
 [tool.ruff]
 target-version = "py313"

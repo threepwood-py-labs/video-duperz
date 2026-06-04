@@ -35,6 +35,13 @@ def test_parser_accepts_runtime_override_flags() -> None:
     assert args.full_reset is True
 
 
+def test_parser_accepts_hidden_smoke_gui_command() -> None:
+    parser = app_main._build_parser()
+    args = parser.parse_args(["smoke-gui", "--duration-ms", "25"])
+    assert args.command == "smoke-gui"
+    assert args.duration_ms == 25
+
+
 def test_benchmark_eval_parser_accepts_internal_flags() -> None:
     parser = app_main._build_parser()
     args = parser.parse_args(
@@ -322,6 +329,133 @@ def test_cmd_gui_delegates_startup_readiness_to_window(monkeypatch) -> None:
 
     assert rc == 0
     assert readiness_calls == ["startup"]
+
+
+def test_cmd_smoke_gui_launches_and_closes_window(monkeypatch) -> None:
+    monkeypatch.setattr(app_main, "load_settings", lambda: types.SimpleNamespace())
+
+    class _FakeDb:
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(app_main, "Database", lambda: _FakeDb())
+
+    def _process_events(_self) -> None:
+        return None
+
+    def _active_modal_widget(self) -> object | None:
+        return self._modal
+
+    class _FakeApp:
+        def __init__(self, _argv):
+            self._modal = None
+            self.quit_called = False
+
+        def quit(self) -> None:
+            self.quit_called = True
+
+        def exec(self) -> int:
+            return 0
+
+    _FakeApp.processEvents = _process_events
+    _FakeApp.activeModalWidget = _active_modal_widget
+
+    def _single_shot(_duration_ms: int, callback) -> None:
+        callback()
+
+    qtwidgets = types.SimpleNamespace(QApplication=_FakeApp)
+    qtcore = types.SimpleNamespace(
+        QTimer=types.SimpleNamespace(singleShot=_single_shot)
+    )
+    monkeypatch.setitem(sys.modules, "PySide6.QtWidgets", qtwidgets)
+    monkeypatch.setitem(sys.modules, "PySide6.QtCore", qtcore)
+    fake_main_window_module = types.ModuleType("video_duperz.ui.main_window")
+
+    lifecycle: list[str] = []
+
+    def _is_visible(self) -> bool:
+        return bool(self._visible)
+
+    class _FakeMainWindow:
+        def __init__(self, db, settings):
+            self.db = db
+            self.settings = settings
+            self._visible = False
+
+        def show(self) -> None:
+            self._visible = True
+            lifecycle.append("show")
+
+        def close(self) -> None:
+            lifecycle.append("close")
+
+    _FakeMainWindow.isVisible = _is_visible
+
+    fake_main_window_module.MainWindow = _FakeMainWindow  # type: ignore[attr-defined]
+    monkeypatch.setitem(
+        sys.modules, "video_duperz.ui.main_window", fake_main_window_module
+    )
+
+    rc = app_main._cmd_smoke_gui(argparse.Namespace(duration_ms=25))
+
+    assert rc == 0
+    assert lifecycle == ["show", "close"]
+
+
+def test_cmd_smoke_gui_rejects_modal_dialog(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(app_main, "load_settings", lambda: types.SimpleNamespace())
+    monkeypatch.setattr(
+        app_main,
+        "Database",
+        lambda: types.SimpleNamespace(close=lambda: None),
+    )
+
+    def _process_events(_self) -> None:
+        return None
+
+    def _active_modal_widget(_self) -> object:
+        return object()
+
+    class _FakeApp:
+        def __init__(self, _argv):
+            pass
+
+    _FakeApp.processEvents = _process_events
+    _FakeApp.activeModalWidget = _active_modal_widget
+
+    qtwidgets = types.SimpleNamespace(QApplication=_FakeApp)
+    qtcore = types.SimpleNamespace(
+        QTimer=types.SimpleNamespace(singleShot=lambda *_a: None)
+    )
+    monkeypatch.setitem(sys.modules, "PySide6.QtWidgets", qtwidgets)
+    monkeypatch.setitem(sys.modules, "PySide6.QtCore", qtcore)
+    fake_main_window_module = types.ModuleType("video_duperz.ui.main_window")
+
+    def _is_visible(_self) -> bool:
+        return True
+
+    class _FakeMainWindow:
+        def __init__(self, db, settings):
+            self.db = db
+            self.settings = settings
+
+        def show(self) -> None:
+            return None
+
+        def close(self) -> None:
+            return None
+
+    _FakeMainWindow.isVisible = _is_visible
+
+    fake_main_window_module.MainWindow = _FakeMainWindow  # type: ignore[attr-defined]
+    monkeypatch.setitem(
+        sys.modules, "video_duperz.ui.main_window", fake_main_window_module
+    )
+
+    rc = app_main._cmd_smoke_gui(argparse.Namespace(duration_ms=25))
+
+    assert rc == 5
+    assert "modal dialog" in capsys.readouterr().err
 
 
 def test_cmd_scan_applies_and_restores_scan_process_priority(
