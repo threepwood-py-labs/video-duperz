@@ -59,13 +59,6 @@ jobs:
     name: Test (Python ${{ matrix.python-version }})
     runs-on: windows-latest
     timeout-minutes: 30
-    env:
-      USERPROFILE: ${{ runner.temp }}\video-duperz-user
-      APPDATA: ${{ runner.temp }}\video-duperz-user\AppData\Roaming
-      LOCALAPPDATA: ${{ runner.temp }}\video-duperz-user\AppData\Local
-      TEMP: ${{ runner.temp }}\video-duperz-temp
-      TMP: ${{ runner.temp }}\video-duperz-temp
-      QT_QPA_PLATFORM: offscreen
     strategy:
       fail-fast: false
       matrix:
@@ -90,15 +83,28 @@ jobs:
       - name: Prepare isolated test profile
         shell: pwsh
         run: |
+          $userProfile = Join-Path $env:RUNNER_TEMP "video-duperz-user"
+          $appData = Join-Path $userProfile "AppData\Roaming"
+          $localAppData = Join-Path $userProfile "AppData\Local"
+          $tempPath = Join-Path $env:RUNNER_TEMP "video-duperz-temp"
           $paths = @(
-            $env:USERPROFILE
-            $env:APPDATA
-            $env:LOCALAPPDATA
-            $env:TEMP
+            $userProfile
+            $appData
+            $localAppData
+            $tempPath
           )
           foreach ($path in $paths) {
             New-Item -ItemType Directory -Force -Path $path | Out-Null
           }
+          $envLines = @(
+            "USERPROFILE=$userProfile"
+            "APPDATA=$appData"
+            "LOCALAPPDATA=$localAppData"
+            "TEMP=$tempPath"
+            "TMP=$tempPath"
+            "QT_QPA_PLATFORM=offscreen"
+          )
+          $envLines | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Run tests with coverage
         run: hatch run test-cov
