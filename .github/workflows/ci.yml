@@ -7,10 +7,15 @@ on:
     branches: [develop, main, master]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: Lint & Types
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -53,6 +58,14 @@ jobs:
   test:
     name: Test (Python ${{ matrix.python-version }})
     runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      USERPROFILE: ${{ runner.temp }}\video-duperz-user
+      APPDATA: ${{ runner.temp }}\video-duperz-user\AppData\Roaming
+      LOCALAPPDATA: ${{ runner.temp }}\video-duperz-user\AppData\Local
+      TEMP: ${{ runner.temp }}\video-duperz-temp
+      TMP: ${{ runner.temp }}\video-duperz-temp
+      QT_QPA_PLATFORM: offscreen
     strategy:
       fail-fast: false
       matrix:
@@ -73,6 +86,19 @@ jobs:
 
       - name: Install Hatch
         run: uv tool install hatch
+
+      - name: Prepare isolated test profile
+        shell: pwsh
+        run: |
+          $paths = @(
+            $env:USERPROFILE
+            $env:APPDATA
+            $env:LOCALAPPDATA
+            $env:TEMP
+          )
+          foreach ($path in $paths) {
+            New-Item -ItemType Directory -Force -Path $path | Out-Null
+          }
 
       - name: Run tests with coverage
         run: hatch run test-cov
