@@ -11,7 +11,8 @@ Primary entry points:
 - export: `python -m video_duperz export`
 - full reset: `python -m video_duperz clean --full-reset`
 
-The packaged Windows release uses Nuitka standalone mode.
+The packaged Windows release publishes a Nuitka onefile executable as the
+primary asset and keeps the Nuitka standalone portable zip as a fallback.
 
 ## Main Runtime Pieces
 
@@ -110,7 +111,16 @@ The repo keeps packaging logic in `scripts/windows/`:
   - prepares the local `.venv`
 - `build_nuitka.py`
   - builds the standalone app from the local interpreter
+- `build_onefile.py`
+  - builds the single-file executable from the local interpreter
 - `package_release.py`
   - assembles the public portable zip
+- `package_onefile.py`
+  - stages the public onefile executable asset
+- `write_release_checksums.py`
+  - writes `SHA256SUMS.txt` for the release assets
 
-The GitHub release workflow is intentionally manual-first so the first public release can be validated before publishing.
+The GitHub release workflow runs on `vMAJOR.MINOR.PATCH` tags and can also be
+run manually as a draft release. It builds the portable zip, builds and
+smoke-tests the onefile executable, writes checksums, attests all public assets,
+and attaches them to the GitHub Release.

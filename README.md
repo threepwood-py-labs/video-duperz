@@ -6,8 +6,11 @@ It is aimed at technical users with large local libraries who want a fast duplic
 
 ## First Public Windows Release
 
-- Primary download: portable GitHub Release zip
+- Primary download: single Windows executable from GitHub Releases
+- Fallback download: portable GitHub Release zip
 - Supported platform: Windows 10/11 x64
+- The single executable is unsigned in the first automated release and may show
+  a Windows SmartScreen warning
 - Portable package contents:
   - `video-duperz/` app folder
   - `README.md`
@@ -37,7 +40,7 @@ troubleshooting.
 ### Required for scanning
 
 - Windows 10 or Windows 11
-- A local extracted copy of the release zip
+- The single release executable, or a local extracted copy of the release zip
 - The FFmpeg suite installed or manually configured
   - `ffmpeg.exe`
   - `ffprobe.exe`
@@ -56,11 +59,15 @@ troubleshooting.
 
 ## Install and First Run
 
-### 1. Download and extract
+### 1. Download
 
-Download the latest release zip from GitHub Releases and extract it to a normal writable folder, for example `C:\Tools\VideoDuperz`.
+Download the latest `video-duperz-vX.Y.Z-windows-x64.exe` from GitHub Releases
+and place it in a normal writable folder, for example `C:\Tools\VideoDuperz`.
 
-Do not run it directly from inside the zip file.
+If the single executable does not work on your machine, download the portable zip
+instead, extract it to the same kind of folder, and run the exe inside the
+extracted `video-duperz` folder. Do not run the portable build directly from
+inside the zip file.
 
 ### 2. Install the FFmpeg suite
 
@@ -85,8 +92,11 @@ scoop install ffmpeg
 Launch:
 
 ```text
-video-duperz\video-duperz.exe
+video-duperz-vX.Y.Z-windows-x64.exe
 ```
+
+For the portable zip fallback, launch `video-duperz\video-duperz.exe` from the
+extracted folder.
 
 If the app cannot find the required scan tools, it opens and shows a setup warning instead of exiting immediately.
 

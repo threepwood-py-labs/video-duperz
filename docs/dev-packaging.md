@@ -4,8 +4,11 @@
 
 - Product: `video-duperz`
 - Public release line: `v0.1.1`
-- Primary artifact: portable Windows zip
+- Primary artifact: single Windows executable
+- Fallback artifact: portable Windows zip
 - Supported target: Windows 10/11 x64
+- The single executable is unsigned in the first automated release and may show
+  a Windows SmartScreen warning
 - Portable zip contents:
   - packaged standalone app folder
   - `README.md`
@@ -34,10 +37,31 @@ Package the public release zip:
 python scripts/windows/package_release.py --release-tag v0.1.1
 ```
 
+Build the onefile executable:
+
+```powershell
+python scripts/windows/build_onefile.py
+```
+
+Stage the public onefile executable:
+
+```powershell
+python scripts/windows/package_onefile.py --release-tag v0.1.1
+```
+
+Write public release checksums:
+
+```powershell
+python scripts/windows/write_release_checksums.py
+```
+
 Equivalent Hatch entry point:
 
 ```powershell
 hatch run package:package-release --release-tag v0.1.1
+hatch run package:onefile
+hatch run package:package-onefile --release-tag v0.1.1
+hatch run package:checksums
 ```
 
 ## Output Layout
@@ -46,28 +70,38 @@ Expected build outputs:
 
 - standalone app folder:
   - `build/nuitka/standalone/video-duperz.dist`
+- onefile executable:
+  - `build/nuitka/onefile/video-duperz.exe`
 - staged portable release:
   - `build/release/video-duperz-windows-x64-v0.1.1`
 - release zip:
   - `build/release/video-duperz-windows-x64-v0.1.1.zip`
+- public onefile executable:
+  - `build/release/video-duperz-v0.1.1-windows-x64.exe`
+- checksums:
+  - `build/release/SHA256SUMS.txt`
 
 ## GitHub Release Workflow
 
-The repo includes a manual Windows release workflow:
+The repo includes an automated Windows release workflow:
 
 - workflow file: `.github/workflows/release.yml`
-- trigger: `workflow_dispatch`
+- triggers: tag push matching `v*.*.*`, or manual `workflow_dispatch`
 - behavior:
-  - builds the standalone executable
-  - packages the portable zip
-  - uploads the zip as a workflow artifact
-  - optionally creates a draft GitHub Release
+  - validates the release tag matches `pyproject.toml`
+  - builds the standalone executable and portable zip
+  - builds the onefile executable
+  - smoke-tests the public onefile executable with `--help`
+  - writes `SHA256SUMS.txt`
+  - attests all public release assets
+  - uploads all release assets as workflow artifacts
+  - creates or updates the GitHub Release
 
 Recommended first-release flow:
 
-1. Run the workflow manually with `publish_release = false`.
-2. Download and validate the artifact.
-3. Re-run with `publish_release = true` once the result is correct.
+1. Run the workflow manually with `draft_release = true`.
+2. Download and validate the exe, zip, and checksums.
+3. Push the matching `v0.1.1` tag once the result is correct.
 
 ## Validation Checklist
 
@@ -79,9 +113,15 @@ Before publishing a release:
 - `hatch run lint:deps`
 - `hatch run lint:policy`
 - `hatch run test`
-- standalone app launches on Windows
+- onefile executable prints help with `--help`
+- onefile executable launches on Windows
+- portable standalone app launches on Windows
 - startup warning appears when required scan tools are unavailable
 - scan buttons enable correctly once required tools are configured
+- release assets contain:
+  - `video-duperz-v0.1.1-windows-x64.exe`
+  - `video-duperz-windows-x64-v0.1.1.zip`
+  - `SHA256SUMS.txt`
 - release zip contains:
   - app folder
   - `README.md`
