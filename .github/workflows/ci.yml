@@ -106,8 +106,31 @@ jobs:
           )
           $envLines | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Run tests with coverage
-        run: hatch run test-cov -- -vv --durations=30 -o faulthandler_timeout=180
+      - name: Reset coverage data
+        run: hatch run coverage erase
+
+      - name: Run unit tests with coverage
+        run: >
+          hatch run pytest --cov=src/video_duperz --cov-append
+          --cov-report= --cov-fail-under=0 tests/unit -vv --durations=20
+          -o faulthandler_timeout=180
+
+      - name: Run GUI tests with coverage
+        run: >
+          hatch run pytest --cov=src/video_duperz --cov-append
+          --cov-report= --cov-fail-under=0 tests/gui -vv --durations=20
+          -o faulthandler_timeout=180
+
+      - name: Run integration tests with coverage
+        run: >
+          hatch run pytest --cov=src/video_duperz --cov-append
+          --cov-report= --cov-fail-under=0 tests/integration -vv --durations=20
+          -o faulthandler_timeout=180
+
+      - name: Write coverage reports
+        run: |
+          hatch run coverage xml
+          hatch run coverage report --fail-under=80 --show-missing
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
