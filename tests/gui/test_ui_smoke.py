@@ -4396,10 +4396,11 @@ def test_results_view_launch_mediainfo_invalid_override_warns(
 
 
 def test_scan_running_locks_ui_to_scan_tab_until_finished(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     app = QApplication.instance() or QApplication([])
+    _force_scan_ready(monkeypatch)
     with Database(tmp_path / "app.db") as db:
         settings = default_settings()
         settings.scan_roots = [str(tmp_path)]
