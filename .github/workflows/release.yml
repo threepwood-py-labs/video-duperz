@@ -7,13 +7,13 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Release tag to build, such as v0.1.5
+        description: Release tag to build, such as v0.1.6
         required: true
-        default: v0.1.5
+        default: v0.1.6
       release_name:
         description: Display name for the GitHub Release
         required: true
-        default: Video Duperz v0.1.5
+        default: Video Duperz v0.1.6
       draft_release:
         description: Create the GitHub Release as a draft
         required: true
@@ -147,7 +147,10 @@ jobs:
           if (-not (Test-Path -LiteralPath $exePath)) {
               throw "Onefile executable missing: $exePath"
           }
-          & $exePath --help
+          $process = Start-Process -FilePath $exePath -ArgumentList @("--help") -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+              throw "Onefile help smoke failed for $exePath with exit code $($process.ExitCode)"
+          }
 
       - name: Smoke test GUI launch
         shell: pwsh
@@ -163,9 +166,9 @@ jobs:
           $env:TEMP = $tempDir
           $env:TMP = $tempDir
           $env:QT_QPA_PLATFORM = "offscreen"
-          & $exePath smoke-gui --duration-ms 500
-          if ($LASTEXITCODE -ne 0) {
-              throw "GUI smoke launch failed for $exePath with exit code $LASTEXITCODE"
+          $process = Start-Process -FilePath $exePath -ArgumentList @("smoke-gui", "--duration-ms", "500") -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+              throw "GUI smoke launch failed for $exePath with exit code $($process.ExitCode)"
           }
 
       - name: Upload release assets
@@ -319,7 +322,7 @@ jobs:
           $env:TEMP = $tempDir
           $env:TMP = $tempDir
           $env:QT_QPA_PLATFORM = "offscreen"
-          & $exePath smoke-gui --duration-ms 500
-          if ($LASTEXITCODE -ne 0) {
-              throw "Published GUI smoke launch failed for $exePath with exit code $LASTEXITCODE"
+          $process = Start-Process -FilePath $exePath -ArgumentList @("smoke-gui", "--duration-ms", "500") -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+              throw "Published GUI smoke launch failed for $exePath with exit code $($process.ExitCode)"
           }
