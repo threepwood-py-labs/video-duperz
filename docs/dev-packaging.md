@@ -3,7 +3,7 @@
 ## Current Release Shape
 
 - Product: `video-duperz`
-- Public release line: `v0.1.3`
+- Public release line: `v0.1.4`
 - Primary artifact: single Windows executable
 - Fallback artifact: portable Windows zip
 - Supported targets: Windows 10/11 x64 and Windows 11 ARM64
@@ -34,7 +34,7 @@ python scripts/windows/build_nuitka.py
 Package the public release zip:
 
 ```powershell
-python scripts/windows/package_release.py --release-tag v0.1.3 --target-arch windows-x64
+python scripts/windows/package_release.py --release-tag v0.1.4 --target-arch windows-x64
 ```
 
 Build the onefile executable:
@@ -46,7 +46,7 @@ python scripts/windows/build_onefile.py
 Stage the public onefile executable:
 
 ```powershell
-python scripts/windows/package_onefile.py --release-tag v0.1.3 --target-arch windows-x64
+python scripts/windows/package_onefile.py --release-tag v0.1.4 --target-arch windows-x64
 ```
 
 Write public release checksums:
@@ -58,9 +58,9 @@ python scripts/windows/write_release_checksums.py
 Equivalent Hatch entry point:
 
 ```powershell
-hatch run package:package-release --release-tag v0.1.3 --target-arch windows-x64
+hatch run package:package-release --release-tag v0.1.4 --target-arch windows-x64
 hatch run package:onefile
-hatch run package:package-onefile --release-tag v0.1.3 --target-arch windows-x64
+hatch run package:package-onefile --release-tag v0.1.4 --target-arch windows-x64
 hatch run package:checksums
 ```
 
@@ -73,13 +73,16 @@ Expected build outputs:
 - onefile executable:
   - `build/nuitka/onefile/video-duperz.exe`
 - staged portable release:
-  - `build/release/video-duperz-windows-x64-v0.1.3`
+  - `build/release/video-duperz-windows-x64-v0.1.4`
 - release zip:
-  - `build/release/video-duperz-windows-x64-v0.1.3.zip`
+  - `build/release/video-duperz-windows-x64-v0.1.4.zip`
 - public onefile executable:
-  - `build/release/video-duperz-v0.1.3-windows-x64.exe`
+  - `build/release/video-duperz-v0.1.4-windows-x64.exe`
 - ARM64 release assets use the same naming pattern with `windows-arm64`
   replacing `windows-x64`.
+- ARM64 builds omit `opencv-python` because upstream does not publish a native
+  Windows ARM64 wheel; OpenCV-backed thumbnail extraction is disabled on that
+  build until such wheels are available.
 - checksums:
   - `build/release/SHA256SUMS.txt`
 
@@ -106,7 +109,7 @@ Recommended first-release flow:
 
 1. Run the workflow manually with `draft_release = true`.
 2. Download and validate the exe, zip, and checksums.
-3. Push the matching `v0.1.3` tag once the result is correct.
+3. Push the matching `v0.1.4` tag once the result is correct.
 
 ## Validation Checklist
 
@@ -124,10 +127,10 @@ Before publishing a release:
 - startup warning appears when required scan tools are unavailable
 - scan buttons enable correctly once required tools are configured
 - release assets contain:
-  - `video-duperz-v0.1.3-windows-x64.exe`
-  - `video-duperz-v0.1.3-windows-arm64.exe`
-  - `video-duperz-windows-x64-v0.1.3.zip`
-  - `video-duperz-windows-arm64-v0.1.3.zip`
+  - `video-duperz-v0.1.4-windows-x64.exe`
+  - `video-duperz-v0.1.4-windows-arm64.exe`
+  - `video-duperz-windows-x64-v0.1.4.zip`
+  - `video-duperz-windows-arm64-v0.1.4.zip`
   - `SHA256SUMS.txt`
 - release zip contains:
   - app folder

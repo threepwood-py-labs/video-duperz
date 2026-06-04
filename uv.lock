@@ -173,12 +173,12 @@ dependencies = [
 
 [[package]]
 name = "video-duperz"
-version = "0.1.1"
+version = "0.1.4"
 source = { editable = "." }
 dependencies = [
     { name = "av" },
     { name = "numpy" },
-    { name = "opencv-python" },
+    { name = "opencv-python", marker = "platform_machine != 'ARM64' or sys_platform != 'win32'" },
     { name = "pyside6" },
     { name = "send2trash" },
     { name = "threep-commons" },
@@ -188,7 +188,7 @@ dependencies = [
 requires-dist = [
     { name = "av" },
     { name = "numpy", specifier = ">=2.4.2" },
-    { name = "opencv-python", specifier = ">=4.13.0.92" },
+    { name = "opencv-python", marker = "platform_machine != 'ARM64' or sys_platform != 'win32'", specifier = ">=4.13.0.92" },
     { name = "pyside6", specifier = ">=6.10.2" },
     { name = "send2trash", specifier = ">=1.8.3" },
     { name = "threep-commons", git = "https://github.com/threepwood-py-labs/threep-commons?rev=v0.3.1" },

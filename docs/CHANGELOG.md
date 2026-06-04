@@ -7,6 +7,8 @@
   provenance attestation.
 - Extended release packaging toward multi-architecture GitHub-hosted builds for
   Windows x64 and Windows ARM64 release assets.
+- Made OpenCV optional for native Windows ARM64 packaging because upstream
+  `opencv-python` wheels are not available for that platform.
 - Hardened GitHub CI with isolated Windows test profiles, branch concurrency,
   split coverage buckets, and pytest timeouts so GUI modal regressions fail
   with actionable logs instead of hanging hosted runners.
