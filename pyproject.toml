@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "video-duperz"
-version = "0.1.2"
+version = "0.1.3"
 description = "Windows-first PySide app for perceptual duplicate video detection."
 readme = "README.md"
 license = { text = "MIT" }
