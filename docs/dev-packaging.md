@@ -3,7 +3,7 @@
 ## Current Release Shape
 
 - Product: `video-duperz`
-- Public release line: `v0.1.1`
+- Public release line: `v0.1.2`
 - Primary artifact: single Windows executable
 - Fallback artifact: portable Windows zip
 - Supported target: Windows 10/11 x64
@@ -34,7 +34,7 @@ python scripts/windows/build_nuitka.py
 Package the public release zip:
 
 ```powershell
-python scripts/windows/package_release.py --release-tag v0.1.1
+python scripts/windows/package_release.py --release-tag v0.1.2
 ```
 
 Build the onefile executable:
@@ -46,7 +46,7 @@ python scripts/windows/build_onefile.py
 Stage the public onefile executable:
 
 ```powershell
-python scripts/windows/package_onefile.py --release-tag v0.1.1
+python scripts/windows/package_onefile.py --release-tag v0.1.2
 ```
 
 Write public release checksums:
@@ -58,9 +58,9 @@ python scripts/windows/write_release_checksums.py
 Equivalent Hatch entry point:
 
 ```powershell
-hatch run package:package-release --release-tag v0.1.1
+hatch run package:package-release --release-tag v0.1.2
 hatch run package:onefile
-hatch run package:package-onefile --release-tag v0.1.1
+hatch run package:package-onefile --release-tag v0.1.2
 hatch run package:checksums
 ```
 
@@ -73,11 +73,11 @@ Expected build outputs:
 - onefile executable:
   - `build/nuitka/onefile/video-duperz.exe`
 - staged portable release:
-  - `build/release/video-duperz-windows-x64-v0.1.1`
+  - `build/release/video-duperz-windows-x64-v0.1.2`
 - release zip:
-  - `build/release/video-duperz-windows-x64-v0.1.1.zip`
+  - `build/release/video-duperz-windows-x64-v0.1.2.zip`
 - public onefile executable:
-  - `build/release/video-duperz-v0.1.1-windows-x64.exe`
+  - `build/release/video-duperz-v0.1.2-windows-x64.exe`
 - checksums:
   - `build/release/SHA256SUMS.txt`
 
@@ -101,7 +101,7 @@ Recommended first-release flow:
 
 1. Run the workflow manually with `draft_release = true`.
 2. Download and validate the exe, zip, and checksums.
-3. Push the matching `v0.1.1` tag once the result is correct.
+3. Push the matching `v0.1.2` tag once the result is correct.
 
 ## Validation Checklist
 
@@ -119,8 +119,8 @@ Before publishing a release:
 - startup warning appears when required scan tools are unavailable
 - scan buttons enable correctly once required tools are configured
 - release assets contain:
-  - `video-duperz-v0.1.1-windows-x64.exe`
-  - `video-duperz-windows-x64-v0.1.1.zip`
+  - `video-duperz-v0.1.2-windows-x64.exe`
+  - `video-duperz-windows-x64-v0.1.2.zip`
   - `SHA256SUMS.txt`
 - release zip contains:
   - app folder

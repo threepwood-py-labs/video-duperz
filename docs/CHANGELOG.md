@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-06-04
+
+- Added automated Windows release packaging for a public onefile executable,
+  portable zip, checksums, artifact upload, GitHub Release publishing, and
+  provenance attestation.
+- Hardened GitHub CI with isolated Windows test profiles, branch concurrency,
+  split coverage buckets, and pytest timeouts so GUI modal regressions fail
+  with actionable logs instead of hanging hosted runners.
+
 ## 2026-03-20
 
 - Added a dedicated per-lane `ETA` column to the Scan tab so each worker lane shows its own completion estimate beside the progress bar instead of cramming ETA into the progress cell.
