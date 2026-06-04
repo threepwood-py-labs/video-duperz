@@ -113,19 +113,19 @@ jobs:
         run: >
           hatch run pytest --cov=src/video_duperz --cov-append
           --cov-report= --cov-fail-under=0 tests/unit -vv --durations=20
-          -o faulthandler_timeout=180
+          --timeout=90 --timeout-method=thread -o faulthandler_timeout=180
 
       - name: Run GUI tests with coverage
         run: >
           hatch run pytest --cov=src/video_duperz --cov-append
           --cov-report= --cov-fail-under=0 tests/gui -vv --durations=20
-          -o faulthandler_timeout=180
+          --timeout=90 --timeout-method=thread -o faulthandler_timeout=180
 
       - name: Run integration tests with coverage
         run: >
           hatch run pytest --cov=src/video_duperz --cov-append
           --cov-report= --cov-fail-under=0 tests/integration -vv --durations=20
-          -o faulthandler_timeout=180
+          --timeout=90 --timeout-method=thread -o faulthandler_timeout=180
 
       - name: Write coverage reports
         run: |
