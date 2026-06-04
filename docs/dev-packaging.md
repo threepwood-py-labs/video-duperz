@@ -6,7 +6,7 @@
 - Public release line: `v0.1.2`
 - Primary artifact: single Windows executable
 - Fallback artifact: portable Windows zip
-- Supported target: Windows 10/11 x64
+- Supported targets: Windows 10/11 x64 and Windows 11 ARM64
 - The single executable is unsigned in the first automated release and may show
   a Windows SmartScreen warning
 - Portable zip contents:
@@ -34,7 +34,7 @@ python scripts/windows/build_nuitka.py
 Package the public release zip:
 
 ```powershell
-python scripts/windows/package_release.py --release-tag v0.1.2
+python scripts/windows/package_release.py --release-tag v0.1.2 --target-arch windows-x64
 ```
 
 Build the onefile executable:
@@ -46,7 +46,7 @@ python scripts/windows/build_onefile.py
 Stage the public onefile executable:
 
 ```powershell
-python scripts/windows/package_onefile.py --release-tag v0.1.2
+python scripts/windows/package_onefile.py --release-tag v0.1.2 --target-arch windows-x64
 ```
 
 Write public release checksums:
@@ -58,9 +58,9 @@ python scripts/windows/write_release_checksums.py
 Equivalent Hatch entry point:
 
 ```powershell
-hatch run package:package-release --release-tag v0.1.2
+hatch run package:package-release --release-tag v0.1.2 --target-arch windows-x64
 hatch run package:onefile
-hatch run package:package-onefile --release-tag v0.1.2
+hatch run package:package-onefile --release-tag v0.1.2 --target-arch windows-x64
 hatch run package:checksums
 ```
 
@@ -78,6 +78,8 @@ Expected build outputs:
   - `build/release/video-duperz-windows-x64-v0.1.2.zip`
 - public onefile executable:
   - `build/release/video-duperz-v0.1.2-windows-x64.exe`
+- ARM64 release assets use the same naming pattern with `windows-arm64`
+  replacing `windows-x64`.
 - checksums:
   - `build/release/SHA256SUMS.txt`
 
@@ -89,13 +91,16 @@ The repo includes an automated Windows release workflow:
 - triggers: tag push matching `v*.*.*`, or manual `workflow_dispatch`
 - behavior:
   - validates the release tag matches `pyproject.toml`
-  - builds the standalone executable and portable zip
-  - builds the onefile executable
+  - builds x64 assets on the GitHub-hosted `windows-latest` runner
+  - builds ARM64 assets on the GitHub-hosted `windows-11-arm` runner
+  - builds standalone executables and portable zips
+  - builds onefile executables
   - smoke-tests the public onefile executable with `--help`
-  - writes `SHA256SUMS.txt`
-  - attests all public release assets
-  - uploads all release assets as workflow artifacts
-  - creates or updates the GitHub Release
+  - uploads per-architecture release assets as workflow artifacts
+  - writes one combined `SHA256SUMS.txt`
+  - attests all public release assets and checksums
+  - uploads combined release assets as a workflow artifact
+  - creates or updates one GitHub Release with both architectures
 
 Recommended first-release flow:
 
@@ -120,7 +125,9 @@ Before publishing a release:
 - scan buttons enable correctly once required tools are configured
 - release assets contain:
   - `video-duperz-v0.1.2-windows-x64.exe`
+  - `video-duperz-v0.1.2-windows-arm64.exe`
   - `video-duperz-windows-x64-v0.1.2.zip`
+  - `video-duperz-windows-arm64-v0.1.2.zip`
   - `SHA256SUMS.txt`
 - release zip contains:
   - app folder

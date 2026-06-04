@@ -18,10 +18,12 @@ class OnefileLayout:
 
     Attributes:
         source_exe: Existing Nuitka onefile executable.
+        target_arch: Public target architecture label used in release asset names.
         release_exe: Public release executable path.
     """
 
     source_exe: Path
+    target_arch: str
     release_exe: Path
 
 
@@ -36,6 +38,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--release-tag",
         default="",
         help="Release tag suffix used in the artifact name, such as v0.1.1.",
+    )
+    parser.add_argument(
+        "--target-arch",
+        default="windows-x64",
+        choices=("windows-x64", "windows-arm64"),
+        help="Public target architecture label used in release asset names.",
     )
     return parser.parse_args(argv)
 
@@ -59,14 +67,22 @@ def resolve_onefile_exe(repo_root: Path) -> Path:
     )
 
 
-def build_onefile_layout(repo_root: Path, release_tag: str) -> OnefileLayout:
+def build_onefile_layout(
+    repo_root: Path,
+    release_tag: str,
+    target_arch: str = "windows-x64",
+) -> OnefileLayout:
     """Return the concrete source and public onefile executable paths."""
 
     config = load_nuitka_config(repo_root)
     source_exe = resolve_onefile_exe(repo_root)
     release_dir = repo_root / "build" / "release"
-    release_exe = release_dir / f"{config.output_name}-{release_tag}-windows-x64.exe"
-    return OnefileLayout(source_exe=source_exe, release_exe=release_exe)
+    release_exe = release_dir / f"{config.output_name}-{release_tag}-{target_arch}.exe"
+    return OnefileLayout(
+        source_exe=source_exe,
+        target_arch=target_arch,
+        release_exe=release_exe,
+    )
 
 
 def stage_onefile(layout: OnefileLayout) -> None:
@@ -86,7 +102,8 @@ def main(argv: list[str] | None = None) -> int:
         args = parse_args(argv)
         version = load_project_version(repo_root)
         release_tag = str(args.release_tag or "").strip() or f"v{version}"
-        layout = build_onefile_layout(repo_root, release_tag)
+        target_arch = str(args.target_arch or "").strip()
+        layout = build_onefile_layout(repo_root, release_tag, target_arch)
         stage_onefile(layout)
     except (OSError, ValueError, tomllib.TOMLDecodeError) as exc:
         print(f"ERROR: failed to package onefile executable: {exc}", file=sys.stderr)

@@ -25,6 +25,7 @@ class ReleaseLayout:
 
     Attributes:
         folder_name: Top-level folder name inside the zip artifact.
+        target_arch: Public target architecture label used in release asset names.
         dist_dir: Existing Nuitka standalone output directory.
         staging_dir: Temporary folder populated before zipping.
         app_dir: Target app folder inside the staged release.
@@ -32,6 +33,7 @@ class ReleaseLayout:
     """
 
     folder_name: str
+    target_arch: str
     dist_dir: Path
     staging_dir: Path
     app_dir: Path
@@ -62,6 +64,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--release-tag",
         default="",
         help="Release tag suffix used in the artifact name, such as v0.1.1.",
+    )
+    parser.add_argument(
+        "--target-arch",
+        default="windows-x64",
+        choices=("windows-x64", "windows-arm64"),
+        help="Public target architecture label used in release asset names.",
     )
     return parser.parse_args(argv)
 
@@ -163,18 +171,23 @@ def resolve_dist_dir(repo_root: Path, config: NuitkaConfig) -> Path:
     )
 
 
-def build_release_layout(repo_root: Path, release_tag: str) -> ReleaseLayout:
+def build_release_layout(
+    repo_root: Path,
+    release_tag: str,
+    target_arch: str = "windows-x64",
+) -> ReleaseLayout:
     """Return the concrete staging layout for one portable release package."""
 
     config = load_nuitka_config(repo_root)
     dist_dir = resolve_dist_dir(repo_root, config)
 
-    folder_name = f"{config.output_name}-windows-x64-{release_tag}"
+    folder_name = f"{config.output_name}-{target_arch}-{release_tag}"
     staging_dir = repo_root / "build" / "release" / folder_name
     app_dir = staging_dir / config.output_name
     zip_path = staging_dir.parent / f"{folder_name}.zip"
     return ReleaseLayout(
         folder_name=folder_name,
+        target_arch=target_arch,
         dist_dir=dist_dir,
         staging_dir=staging_dir,
         app_dir=app_dir,
@@ -226,7 +239,8 @@ def main(argv: list[str] | None = None) -> int:
         args = parse_args(argv)
         version = load_project_version(repo_root)
         release_tag = str(args.release_tag or "").strip() or f"v{version}"
-        layout = build_release_layout(repo_root, release_tag)
+        target_arch = str(args.target_arch or "").strip()
+        layout = build_release_layout(repo_root, release_tag, target_arch)
         stage_release(layout, repo_root)
         write_release_zip(layout)
     except (OSError, ValueError, tomllib.TOMLDecodeError) as exc:

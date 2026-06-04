@@ -66,7 +66,16 @@ include_data_files = []
     layout = package_release.build_release_layout(repo_root, "v0.1.1")
 
     assert layout.dist_dir == dist_dir
+    assert layout.target_arch == "windows-x64"
     assert layout.folder_name == "video-duperz-windows-x64-v0.1.1"
+
+    arm64_layout = package_release.build_release_layout(
+        repo_root,
+        "v0.1.1",
+        "windows-arm64",
+    )
+    assert arm64_layout.target_arch == "windows-arm64"
+    assert arm64_layout.folder_name == "video-duperz-windows-arm64-v0.1.1"
 
 
 def test_build_onefile_config_forces_onefile_mode(tmp_path: Path) -> None:
@@ -132,8 +141,20 @@ include_data_files = []
         tmp_path / "build" / "release" / "video-duperz-v0.1.1-windows-x64.exe"
     )
     assert layout.source_exe == source_exe
+    assert layout.target_arch == "windows-x64"
     assert layout.release_exe == expected_exe
     assert expected_exe.read_bytes() == b"fake exe"
+
+    arm64_layout = package_onefile.build_onefile_layout(
+        tmp_path,
+        "v0.1.1",
+        "windows-arm64",
+    )
+    assert arm64_layout.target_arch == "windows-arm64"
+    assert (
+        arm64_layout.release_exe
+        == tmp_path / "build" / "release" / "video-duperz-v0.1.1-windows-arm64.exe"
+    )
 
 
 def test_write_release_checksums_includes_exe_and_zip(tmp_path: Path) -> None:

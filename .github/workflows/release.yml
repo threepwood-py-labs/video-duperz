@@ -20,15 +20,21 @@ on:
         default: true
         type: boolean
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  build-portable:
-    name: Build Windows Release Assets
+  release-metadata:
+    name: Resolve Release Metadata
     runs-on: windows-latest
+    timeout-minutes: 10
     permissions:
-      contents: write
-      id-token: write
-      attestations: write
-      artifact-metadata: write
+      contents: read
+    outputs:
+      release_tag: ${{ steps.resolve.outputs.release_tag }}
+      release_name: ${{ steps.resolve.outputs.release_name }}
+      draft_release: ${{ steps.resolve.outputs.draft_release }}
 
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +43,7 @@ jobs:
           fetch-depth: 0
 
       - name: Resolve release metadata
+        id: resolve
         shell: pwsh
         run: |
           $releaseTag = "${{ github.ref_name }}"
@@ -50,14 +57,9 @@ jobs:
           if ($releaseTag -notmatch '^v\d+\.\d+\.\d+$') {
               throw "Release tag '$releaseTag' must match vMAJOR.MINOR.PATCH."
           }
-          "RELEASE_TAG=$releaseTag" >> $env:GITHUB_ENV
-          "RELEASE_NAME=$releaseName" >> $env:GITHUB_ENV
-          "DRAFT_RELEASE=$draftRelease" >> $env:GITHUB_ENV
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
+          "release_tag=$releaseTag" >> $env:GITHUB_OUTPUT
+          "release_name=$releaseName" >> $env:GITHUB_OUTPUT
+          "draft_release=$draftRelease" >> $env:GITHUB_OUTPUT
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -83,7 +85,39 @@ jobs:
                   f"Release tag {release_tag!r} does not match project version "
                   f"{version!r}; expected {expected_tag!r}."
               )
-          '@ | python - $env:RELEASE_TAG
+          '@ | python - "${{ steps.resolve.outputs.release_tag }}"
+
+  build-release-assets:
+    name: Build ${{ matrix.target_arch }} Release Assets
+    needs: release-metadata
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target_arch: windows-x64
+            runner: windows-latest
+          - target_arch: windows-arm64
+            runner: windows-11-arm
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-metadata.outputs.release_tag }}
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
 
       - name: Prepare project environment
         run: python scripts/windows/setup_env.py
@@ -94,7 +128,8 @@ jobs:
       - name: Package portable release zip
         run: >
           python scripts/windows/package_release.py
-          --release-tag "${{ env.RELEASE_TAG }}"
+          --release-tag "${{ needs.release-metadata.outputs.release_tag }}"
+          --target-arch "${{ matrix.target_arch }}"
 
       - name: Build onefile executable
         run: python scripts/windows/build_onefile.py
@@ -102,16 +137,55 @@ jobs:
       - name: Package onefile executable
         run: >
           python scripts/windows/package_onefile.py
-          --release-tag "${{ env.RELEASE_TAG }}"
+          --release-tag "${{ needs.release-metadata.outputs.release_tag }}"
+          --target-arch "${{ matrix.target_arch }}"
 
       - name: Smoke test onefile executable
         shell: pwsh
         run: |
-          $exePath = "build/release/video-duperz-${{ env.RELEASE_TAG }}-windows-x64.exe"
+          $exePath = "build/release/video-duperz-${{ needs.release-metadata.outputs.release_tag }}-${{ matrix.target_arch }}.exe"
           if (-not (Test-Path -LiteralPath $exePath)) {
               throw "Onefile executable missing: $exePath"
           }
           & $exePath --help
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: video-duperz-${{ needs.release-metadata.outputs.release_tag }}-${{ matrix.target_arch }}-release-assets
+          path: |
+            build/release/*.zip
+            build/release/*.exe
+
+  publish-release:
+    name: Publish GitHub Release
+    needs:
+      - release-metadata
+      - build-release-assets
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-metadata.outputs.release_tag }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          pattern: video-duperz-${{ needs.release-metadata.outputs.release_tag }}-*-release-assets
+          path: build/release
+          merge-multiple: true
 
       - name: Write release checksums
         run: python scripts/windows/write_release_checksums.py
@@ -124,10 +198,10 @@ jobs:
             ${{ github.workspace }}/build/release/*.exe
             ${{ github.workspace }}/build/release/SHA256SUMS.txt
 
-      - name: Upload release assets
+      - name: Upload combined release assets
         uses: actions/upload-artifact@v4
         with:
-          name: video-duperz-${{ env.RELEASE_TAG }}-windows-x64-release-assets
+          name: video-duperz-${{ needs.release-metadata.outputs.release_tag }}-release-assets
           path: |
             build/release/*.zip
             build/release/*.exe
@@ -136,9 +210,9 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.RELEASE_TAG }}
-          name: ${{ env.RELEASE_NAME }}
-          draft: ${{ env.DRAFT_RELEASE == 'true' }}
+          tag_name: ${{ needs.release-metadata.outputs.release_tag }}
+          name: ${{ needs.release-metadata.outputs.release_name }}
+          draft: ${{ needs.release-metadata.outputs.draft_release == 'true' }}
           generate_release_notes: true
           files: |
             build/release/*.zip
