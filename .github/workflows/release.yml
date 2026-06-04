@@ -1,6 +1,9 @@
 name: Release
 
 on:
+  push:
+    tags:
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       release_tag:
@@ -8,22 +11,14 @@ on:
         required: true
         default: v0.1.1
       release_name:
-        description: Display name for the optional GitHub Release
+        description: Display name for the GitHub Release
         required: true
         default: Video Duperz v0.1.1
-      publish_release:
-        description: Create a draft GitHub Release
+      draft_release:
+        description: Create the GitHub Release as a draft
         required: true
-        default: false
+        default: true
         type: boolean
-      release_notes:
-        description: Optional user-facing release notes body
-        required: false
-        default: |
-          Highlights:
-          - First portable Windows release for Video Duperz
-          - End-user-first README and setup guidance
-          - Improved first-run handling when scan tools are missing
 
 jobs:
   build-portable:
@@ -38,8 +33,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.release_tag }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
           fetch-depth: 0
+
+      - name: Resolve release metadata
+        shell: pwsh
+        run: |
+          $releaseTag = "${{ github.ref_name }}"
+          $releaseName = "Video Duperz $releaseTag"
+          $draftRelease = "false"
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+              $releaseTag = "${{ inputs.release_tag }}"
+              $releaseName = "${{ inputs.release_name }}"
+              $draftRelease = "${{ inputs.draft_release }}".ToLowerInvariant()
+          }
+          if ($releaseTag -notmatch '^v\d+\.\d+\.\d+$') {
+              throw "Release tag '$releaseTag' must match vMAJOR.MINOR.PATCH."
+          }
+          "RELEASE_TAG=$releaseTag" >> $env:GITHUB_ENV
+          "RELEASE_NAME=$releaseName" >> $env:GITHUB_ENV
+          "DRAFT_RELEASE=$draftRelease" >> $env:GITHUB_ENV
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
@@ -51,6 +64,45 @@ jobs:
         with:
           python-version-file: .python-version
 
+      - name: Validate release tag matches project version
+        shell: pwsh
+        run: |
+          @'
+          from __future__ import annotations
+
+          import sys
+          import tomllib
+          from pathlib import Path
+
+          release_tag = sys.argv[1]
+          pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          version = str(pyproject["project"]["version"])
+          expected_tag = f"v{version}"
+          if release_tag != expected_tag:
+              raise SystemExit(
+                  f"Release tag {release_tag!r} does not match project version "
+                  f"{version!r}; expected {expected_tag!r}."
+              )
+          '@ | python - $env:RELEASE_TAG
+
+      - name: Install Hatch
+        run: uv tool install hatch
+
+      - name: Run linting
+        run: hatch run lint:check
+
+      - name: Run formatting check
+        run: hatch run lint:fmt
+
+      - name: Run type checking
+        run: hatch run lint:types
+
+      - name: Run policy checks
+        run: hatch run lint:policy
+
+      - name: Run tests with coverage
+        run: hatch run test-cov
+
       - name: Prepare project environment
         run: python scripts/windows/setup_env.py
 
@@ -60,7 +112,7 @@ jobs:
       - name: Package portable release zip
         run: >
           python scripts/windows/package_release.py
-          --release-tag "${{ inputs.release_tag }}"
+          --release-tag "${{ env.RELEASE_TAG }}"
 
       - name: Attest portable release zip
         uses: actions/attest@v4
@@ -70,15 +122,14 @@ jobs:
       - name: Upload portable artifact
         uses: actions/upload-artifact@v4
         with:
-          name: video-duperz-${{ inputs.release_tag }}-windows-x64
+          name: video-duperz-${{ env.RELEASE_TAG }}-windows-x64
           path: build/release/*.zip
 
-      - name: Publish draft GitHub Release
-        if: ${{ inputs.publish_release }}
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.release_tag }}
-          name: ${{ inputs.release_name }}
-          body: ${{ inputs.release_notes }}
-          draft: true
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_NAME }}
+          draft: ${{ env.DRAFT_RELEASE == 'true' }}
+          generate_release_notes: true
           files: build/release/*.zip
