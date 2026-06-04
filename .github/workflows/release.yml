@@ -29,6 +29,11 @@ jobs:
   build-portable:
     name: Build Portable Release
     runs-on: windows-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
 
     steps:
       - uses: actions/checkout@v4
@@ -56,6 +61,11 @@ jobs:
         run: >
           python scripts/windows/package_release.py
           --release-tag "${{ inputs.release_tag }}"
+
+      - name: Attest portable release zip
+        uses: actions/attest@v4
+        with:
+          subject-path: ${{ github.workspace }}/build/release/*.zip
 
       - name: Upload portable artifact
         uses: actions/upload-artifact@v4
